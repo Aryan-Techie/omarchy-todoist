@@ -74,12 +74,13 @@ The whole panel is operable without a mouse:
 | `t` / `i` / `a` | Jump straight to the Today, Inbox, or All view |
 | `p` | Toggle Settings open/closed |
 | `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
-| `Enter` | Open the selected task on the Todoist website |
+| `Enter` | Open the selected task on the Todoist website, then close the panel |
 | `Space` | Complete the selected task |
 | `e` | Edit the selected task's title in place |
 | `x` | Delete the selected task (asks for confirmation first) |
 | `q` | Jump into the Add-a-task box |
 | `r` | Refresh |
+| `?` | Toggle a shortcuts cheat-sheet overlay (also the "?" button in the header) |
 
 Completing a task strikes it through and dims it for a moment before it
 disappears from the list, so the click reads as "done" rather than "vanished."

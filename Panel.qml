@@ -63,6 +63,8 @@ Panel {
   // Enter only opens the browser; Space still completes on its own.
   property bool suppressNextActivate: false
 
+  property bool helpOpen: false
+
   property bool loading: false
   property string errorText: ""
 
@@ -227,13 +229,16 @@ Panel {
     if (task) root.requestComplete(task.id)
   }
 
-  // ---- Open the selected task on the Todoist website (Enter).
+  // ---- Open the selected task on the Todoist website (Enter). Closes the
+  //      panel afterward — attention is going to the browser, not staying
+  //      here, matching how launching anything else from a panel dismisses it.
   function openSelectedTaskInBrowser() {
     if (root.selectedTaskIndex < 0 || root.selectedTaskIndex >= root.tasks.length) return
     var task = root.tasks[root.selectedTaskIndex]
     if (!task || !task.id) return
     openUrlProc.command = ["xdg-open", "https://app.todoist.com/app/task/" + encodeURIComponent(task.id)]
     openUrlProc.running = true
+    root.close()
   }
 
   // ---- Inline content edit (e).
@@ -754,7 +759,8 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind || confirmDialog.opened || root.editingTaskIndex !== -1
+      clip: true
+      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind || confirmDialog.opened || root.editingTaskIndex !== -1 || root.helpOpen
       // First Escape backs out of Settings to the task list; a second one
       // (now that settingsView is false) closes the panel.
       onCloseRequested: {
@@ -793,6 +799,7 @@ Panel {
         if (!root.settingsView) root.requestDeleteSelected()
       }
       onTextKey: function(t) {
+        if (t === "?") { root.helpOpen = !root.helpOpen; return }
         if (t === "r" || t === "R") { root.refresh(); return }
         if (t === "p" || t === "P") { root.settingsView = !root.settingsView; return }
         if (root.settingsView) return
@@ -883,6 +890,13 @@ Panel {
                 tooltipText: root.settingsView ? "Close settings (Esc)" : "Settings"
                 foreground: root.contentForeground
                 onClicked: root.settingsView = !root.settingsView
+              }
+
+              PanelActionButton {
+                iconText: "?"
+                tooltipText: "Keyboard shortcuts (?)"
+                foreground: root.contentForeground
+                onClicked: root.helpOpen = !root.helpOpen
               }
             }
           }
@@ -1173,7 +1187,11 @@ Panel {
             }
 
             Text {
-              visible: root.loading
+              // Only shown for the initial fetch on an empty list — a
+              // background/periodic refresh of an already-populated list
+              // stays quiet rather than growing the panel with a redundant
+              // "Loading…" row underneath tasks that are already showing.
+              visible: root.loading && root.tasks.length === 0
               height: visible ? implicitHeight : 0
               width: parent.width
               text: "Loading…"
@@ -1223,6 +1241,92 @@ Panel {
           Keys.onPressed: function(event) {
             confirmDialog.handleKey(event)
             event.accepted = true
+          }
+        }
+      }
+
+      // Shortcuts help, toggled by "?" or the header's "?" button. Declared
+      // last so it paints above everything, including the confirm dialog.
+      Item {
+        id: helpOverlay
+        anchors.fill: parent
+        visible: root.helpOpen
+
+        Rectangle {
+          anchors.fill: parent
+          color: Util.alpha(Color.background, 0.75)
+
+          MouseArea {
+            anchors.fill: parent
+            onClicked: root.helpOpen = false
+          }
+
+          BorderSurface {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Style.space(24), Style.space(300))
+            height: Math.min(parent.height - Style.space(24), helpColumn.implicitHeight + Style.space(40))
+            color: Color.popups.background
+            borderSpec: Border.flat(Color.accent, Style.normalBorderWidth)
+            radius: Style.cornerRadius
+            padding: Style.space(16)
+            clip: true
+
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {}
+            }
+
+            Flickable {
+              anchors.fill: parent
+              contentWidth: width
+              contentHeight: helpColumn.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              interactive: contentHeight > height
+
+              Column {
+                id: helpColumn
+                width: parent.width
+                spacing: Style.spacing.sm
+
+                Text {
+                  text: "Keyboard shortcuts"
+                  font.bold: true
+                  color: root.contentForeground
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.title
+                }
+
+                Text {
+                  width: parent.width
+                  wrapMode: Text.WordWrap
+                  color: root.contentForeground
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  text: "Tab / Shift+Tab — cycle Today → Inbox → All\n"
+                    + "t / i / a — jump to Today / Inbox / All\n"
+                    + "p — toggle Settings\n"
+                    + "↑/↓ or k/j — move task selection\n"
+                    + "Enter — open task on Todoist\n"
+                    + "Space — complete task\n"
+                    + "e — edit task title\n"
+                    + "x — delete task\n"
+                    + "q — focus Add-a-task\n"
+                    + "r — refresh\n"
+                    + "Escape — back / close\n"
+                    + "? — toggle this help"
+                }
+              }
+            }
+          }
+
+          Item {
+            anchors.fill: parent
+            focus: root.helpOpen
+            Keys.onEscapePressed: root.helpOpen = false
+            Keys.onPressed: function(event) {
+              if (event.text === "?") { root.helpOpen = false; event.accepted = true }
+            }
           }
         }
       }

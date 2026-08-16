@@ -66,7 +66,24 @@ launch-readiness.
   the panel's own Escape handling, which is suspended whenever any text
   field has focus, so it previously had no visible effect at all.
 
-## v1.6 — projects & richer task views (next)
+## v1.6 — shipped
+
+- Fixed a real overflow bug reported with a screenshot: on the All view with
+  enough tasks, content could visually bleed past the card's rounded border
+  instead of staying clipped. Root cause was the "Loading…" row rendering
+  *underneath an already-populated list* during a background/periodic
+  refresh (it only ever should have shown for the initial empty-list fetch)
+  — that extra row was enough to push total content past the panel's height
+  budget. Fixed the immediate cause (Loading now only shows when the list is
+  actually empty) and added a `clip: true` safety net on the panel's own key
+  handler as defense in depth, so nothing can bleed past the card regardless
+  of cause.
+- `Enter` on a task now also closes the panel after opening it in the
+  browser — previously it opened the tab but left the panel sitting open.
+- `?` (or the new "?" button in the header) toggles a keyboard-shortcuts
+  cheat-sheet overlay.
+
+## v1.7 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -75,7 +92,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.7 — more task actions
+## v1.8 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -85,7 +102,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.8 — comments & subtasks
+## v1.9 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.

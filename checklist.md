@@ -95,6 +95,19 @@ Tracks what's done and what's left before submitting to
 - [ ] Focus the Add-a-task box, type something, press `Escape`, confirm it
       only leaves the box (focus returns to normal keyboard nav) and does
       **not** close the panel or clear what you typed
+- [x] Reproduced and fixed the reported overflow bug on the All view (24
+      tasks): the "Loading…" row was rendering below an already-populated
+      list during background refreshes, pushing content past the card's
+      bounds. Loading now only shows on an empty list; also added a
+      `clip: true` safety net on the panel's key handler.
+- [ ] Switch to All with 20+ tasks, wait through a background refresh (or
+      trigger one with `r`), confirm nothing visibly overflows past the
+      card's rounded border regardless of scroll position
+- [ ] Press `Enter` on a task, confirm the browser opens AND the panel
+      closes (not just the browser opening)
+- [ ] Press `?` (and click the new "?" header button), confirm the
+      shortcuts overlay opens/closes; confirm `Escape` and `?` both close it
+      without closing the whole panel
 
 ## Known, accepted issues
 
