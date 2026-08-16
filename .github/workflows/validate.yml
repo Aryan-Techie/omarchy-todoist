@@ -1,0 +1,75 @@
+name: Validate plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json is well-formed JSON
+        run: python3 -m json.tool manifest.json > /dev/null
+
+      - name: Check manifest.json required fields
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+
+          with open("manifest.json") as f:
+              m = json.load(f)
+
+          required = ["schemaVersion", "id", "name", "version", "author", "license", "kinds", "entryPoints"]
+          missing = [k for k in required if k not in m]
+          if missing:
+              print(f"manifest.json missing required fields: {missing}")
+              sys.exit(1)
+
+          for kind in m["kinds"]:
+              entry = m["entryPoints"].get({"bar-widget": "barWidget"}.get(kind, kind))
+              if entry is None:
+                  print(f"No entryPoints entry for kind '{kind}'")
+                  sys.exit(1)
+              import os
+              if not os.path.isfile(entry):
+                  print(f"entryPoints target '{entry}' does not exist")
+                  sys.exit(1)
+
+          print("manifest.json OK:", m["id"], m["version"])
+          EOF
+
+      - name: Basic QML syntax sanity check
+        run: |
+          for f in *.qml; do
+            echo "Checking $f"
+            # Balanced-brace check - catches the most common copy/paste
+            # mistakes without needing a full Quickshell runtime, which
+            # isn't available in CI (qmllint itself can't resolve this
+            # shell's qs.Commons/qs.Ui namespaces outside a real install -
+            # see CONTRIBUTING.md).
+            python3 - "$f" <<'EOF'
+          import sys
+          path = sys.argv[1]
+          text = open(path).read()
+          depth = 0
+          for ch in text:
+              if ch == '{':
+                  depth += 1
+              elif ch == '}':
+                  depth -= 1
+                  if depth < 0:
+                      print(f"{path}: unbalanced '}}'")
+                      sys.exit(1)
+          if depth != 0:
+              print(f"{path}: unbalanced braces (off by {depth})")
+              sys.exit(1)
+          EOF
+          done
+
+      - name: Confirm README references match manifest.json id
+        run: |
+          id=$(python3 -c "import json; print(json.load(open('manifest.json'))['id'])")
+          grep -q "$id" README.md || { echo "README.md doesn't mention plugin id $id"; exit 1; }

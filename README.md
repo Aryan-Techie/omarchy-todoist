@@ -1,12 +1,22 @@
-# ✓ Todoist for Omarchy
+<div align="center">
+
+<img src="assets/todoist-icon.svg" width="72" height="72" alt="">
+
+# Todoist for Omarchy
+
+**A keyboard-first [Todoist](https://www.todoist.com/) bar widget for [Omarchy](https://omarchy.org/).**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FAryan-Techie%2Fomarchy-todoist%2Fmain%2Fmanifest.json&query=%24.version&label=version&color=informational)](manifest.json)
+[![Omarchy plugin](https://img.shields.io/badge/omarchy-plugin-6d4aff)](https://omarchy.org/)
+[![Validate](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml/badge.svg)](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A [Todoist](https://www.todoist.com/) bar widget for [Omarchy](https://omarchy.org/). The
-bar shows how many tasks are due today or overdue; click it for a popup with
-the full list, a checkbox to complete each task, and a box to quickly add new
-ones — all without leaving the keyboard.
+</div>
+
+The bar shows how many tasks are due today or overdue; click it for a popup
+with the full list, a checkbox to complete each task, and a box to quickly
+add new ones — all without leaving the keyboard.
 
 ![Todoist panel showing the Today view, color-coded by priority](preview.png)
 
@@ -220,4 +230,5 @@ See [CHANGELOG.md](CHANGELOG.md) for what's changed in each version.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). The Todoist icon used above is a third-party
+asset under a separate license — see [assets/NOTICE.md](assets/NOTICE.md).
