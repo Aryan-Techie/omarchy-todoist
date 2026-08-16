@@ -47,16 +47,30 @@ Tracks what's done and what's left before submitting to
       Settings is clear ("Todoist rejected the API token…")
 - [ ] Test with no network — confirm the error message is clear ("Couldn't
       reach Todoist…")
+- [x] Confirmed the panel drops directly below the bar icon (`centerOnBar:
+      false`), not centered on the whole bar
+- [x] Verified live in `qs log` after the v1.2 keyboard/visual rework —
+      only the known benign binding-loop class below, no new warnings, no
+      JS errors
+- [ ] Walk the full keyboard path with no mouse: open via shortcut → Tab
+      through Today/Inbox/All → arrow through tasks → Enter to complete →
+      `r` to refresh → Escape → Escape to close
+- [ ] Confirm Tab still falls through to "switch to next bar panel" while
+      Settings is open (not quick-view cycling there)
+- [ ] Confirm typing in the token/filter/quick-add fields, or recording a
+      shortcut, isn't disrupted by the new `r`/arrow/Tab handlers (the
+      `blocked` guard should suspend them all while a field has focus)
 
 ## Known, accepted issues
 
-- Two benign `Binding loop detected for property "height"` warnings in `qs
+- Benign `Binding loop detected for property "height"` warnings in `qs
   log`, from the `height: visible ? implicitHeight : 0` pattern on the
-  loading/empty-state `Text` rows. Confirmed this exact warning class
-  already exists in Omarchy's own shipped `bluetooth` panel
-  (`PanelSectionHeader`), so it's a known Qt Quick engine quirk in this
-  environment, not a functional bug — cosmetic log noise only, does not
-  affect behavior. Left as-is rather than restructuring further.
+  loading/empty-state `Text` rows and the new `PanelSectionHeader` above the
+  list. Confirmed this exact warning class already exists in Omarchy's own
+  shipped `bluetooth` panel (`PanelSectionHeader`), so it's a known Qt Quick
+  engine quirk in this environment, not a functional bug — cosmetic log
+  noise only, does not affect behavior. Left as-is rather than restructuring
+  further.
 
 ## Before hitting submit
 

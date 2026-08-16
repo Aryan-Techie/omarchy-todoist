@@ -35,6 +35,15 @@ Panel {
 
   property var tasks: []
   readonly property int taskCount: tasks.length
+  onTasksChanged: {
+    if (root.selectedTaskIndex >= root.tasks.length) root.selectedTaskIndex = root.tasks.length - 1
+  }
+
+  // Keyboard cursor over the task list. -1 = nothing selected yet;
+  // taskCursorActive gates the row highlight so it only shows up once the
+  // user has actually pressed an arrow key, not on every open.
+  property int selectedTaskIndex: -1
+  property bool taskCursorActive: false
 
   property bool loading: false
   property string errorText: ""
@@ -55,6 +64,17 @@ Panel {
 
   readonly property color contentForeground: bar ? bar.foreground : Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
+
+  readonly property string quickViewLabel: root.quickView === "inbox" ? "INBOX"
+    : root.quickView === "all" ? "ALL TASKS"
+    : root.quickView === "custom" ? "CUSTOM FILTER"
+    : "TODAY & OVERDUE"
+
+  readonly property string headerSubtitle: {
+    if (root.apiToken === "") return "NOT CONNECTED"
+    if (root.settingsView) return "SETTINGS"
+    return root.quickViewLabel + " · " + root.taskCount + (root.taskCount === 1 ? " TASK" : " TASKS")
+  }
 
   // ---- Lifecycle. Matches the clock/weather contract: open() refreshes
   //      before showing so the list is never more than one popup-open stale.
@@ -151,8 +171,40 @@ Panel {
   function selectQuickView(view) {
     if (view === root.quickView) return
     root.quickView = view
+    root.selectedTaskIndex = -1
+    root.taskCursorActive = false
     persistSettings()
     refresh()
+  }
+
+  readonly property var quickViewOrder: ["today", "inbox", "all"]
+
+  function cycleQuickView(direction) {
+    var idx = root.quickViewOrder.indexOf(root.quickView)
+    if (idx === -1) idx = 0
+    var next = (idx + direction + root.quickViewOrder.length) % root.quickViewOrder.length
+    root.selectQuickView(root.quickViewOrder[next])
+  }
+
+  // ---- Keyboard cursor over the task list (arrow keys / j·k, Enter/Space
+  //      to complete). Independent of the Tab-driven quick-view cycling and
+  //      of the keyboard-shortcut recorder above.
+  function moveTaskCursor(delta) {
+    if (root.tasks.length === 0) return
+    root.taskCursorActive = true
+    var next = root.selectedTaskIndex + delta
+    if (next < 0) next = 0
+    if (next > root.tasks.length - 1) next = root.tasks.length - 1
+    root.selectedTaskIndex = next
+    Qt.callLater(function() {
+      if (taskListView.count > 0) taskListView.positionViewAtIndex(root.selectedTaskIndex, ListView.Contain)
+    })
+  }
+
+  function activateSelectedTask() {
+    if (root.selectedTaskIndex < 0 || root.selectedTaskIndex >= root.tasks.length) return
+    var task = root.tasks[root.selectedTaskIndex]
+    if (task) root.requestComplete(task.id)
   }
 
   // ---- Task list.
@@ -432,12 +484,21 @@ Panel {
   component TaskRow: Item {
     id: row
     required property var task
+    property bool hasCursor: false
 
     readonly property bool overdue: Model.taskIsOverdue(task)
     readonly property string dueLabel: Model.taskDueLabel(task)
     readonly property color textColor: (task && task.priority === 4) ? Color.urgent : root.contentForeground
 
     height: Math.max(checkBtn.height, textColumn.implicitHeight) + Style.spacing.sm * 2
+
+    Rectangle {
+      anchors.fill: parent
+      anchors.margins: -Style.spacing.xs
+      radius: Style.cornerRadius
+      visible: row.hasCursor
+      color: Style.hoverFillFor(root.contentForeground, Color.accent)
+    }
 
     PanelActionButton {
       id: checkBtn
@@ -488,7 +549,8 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    centerOnBar: true
+    // Drops right below the bar icon, not centered on the whole bar.
+    centerOnBar: false
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(340))
     contentHeight: panel.fittedContentHeight(mainColumn.implicitHeight, Style.space(520))
@@ -497,8 +559,29 @@ Panel {
       id: keyCatcher
       anchors.fill: parent
       blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind
-      onCloseRequested: root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
+      // First Escape backs out of Settings to the task list; a second one
+      // (now that settingsView is false) closes the panel.
+      onCloseRequested: {
+        if (root.settingsView) root.settingsView = false
+        else root.close()
+      }
+      // Tab cycles the quick-view tabs while the task list is showing;
+      // Settings has no tabs of its own, so Tab falls back to the shell's
+      // usual "switch to the next bar panel" behavior there.
+      onTabRequested: function(direction) {
+        if (root.settingsView) root.switchPanel(direction)
+        else root.cycleQuickView(direction)
+      }
+      onMoveRequested: function(dx, dy) {
+        if (root.settingsView || dy === 0) return
+        root.moveTaskCursor(dy)
+      }
+      onActivateRequested: {
+        if (!root.settingsView) root.activateSelectedTask()
+      }
+      onTextKey: function(t) {
+        if (t === "r" || t === "R") root.refresh()
+      }
 
       Flickable {
         id: scroll
@@ -515,35 +598,61 @@ Panel {
           spacing: Style.spacing.lg
 
           // ---- Header ---------------------------------------------------
-          // Height comes from titleText alone (not a Math.max of both
+          // Height comes from titleColumn alone (not a Math.max of both
           // children) and actionsRow centers on that sibling directly,
           // rather than on the parent's own height — sizing a parent from a
           // child while anchoring that child back to the parent's center is
           // a classic Qt Quick binding-loop trap.
           Item {
             width: parent.width
-            height: titleText.implicitHeight
+            height: titleColumn.implicitHeight
 
-            Text {
-              id: titleText
+            Column {
+              id: titleColumn
               anchors.left: parent.left
               anchors.top: parent.top
-              text: "Todoist"
-              font.bold: true
-              font.family: root.contentFontFamily
-              font.pixelSize: Style.font.title
-              color: root.contentForeground
+              anchors.right: actionsRow.left
+              anchors.rightMargin: Style.spacing.sm
+              spacing: 2
+
+              Row {
+                spacing: Style.spacing.xs
+
+                Text {
+                  text: "✓"
+                  color: Color.accent
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.title
+                }
+
+                Text {
+                  text: "Todoist"
+                  font.bold: true
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.title
+                  color: root.contentForeground
+                }
+              }
+
+              Text {
+                width: parent.width
+                text: root.headerSubtitle
+                elide: Text.ElideRight
+                color: Qt.darker(root.contentForeground, 1.4)
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.caption
+              }
             }
 
             Row {
               id: actionsRow
               anchors.right: parent.right
-              anchors.verticalCenter: titleText.verticalCenter
+              anchors.verticalCenter: titleColumn.verticalCenter
               spacing: Style.spacing.sm
 
               PanelActionButton {
                 iconText: "↻"
-                tooltipText: "Refresh"
+                tooltipText: "Refresh (r)"
                 foreground: root.contentForeground
                 enabled: root.apiToken !== ""
                 onClicked: root.refresh()
@@ -551,7 +660,7 @@ Panel {
 
               PanelActionButton {
                 iconText: root.settingsView ? "✕" : "⚙"
-                tooltipText: root.settingsView ? "Close settings" : "Settings"
+                tooltipText: root.settingsView ? "Close settings (Esc)" : "Settings"
                 foreground: root.contentForeground
                 onClicked: root.settingsView = !root.settingsView
               }
@@ -777,11 +886,14 @@ Panel {
               }
             }
 
+            // Segmented-control look: zero spacing between the three
+            // Buttons, differentiated only by the selected-state fill —
+            // tab through them with Tab/Shift+Tab.
             Row {
               width: parent.width
               visible: root.apiToken !== ""
               height: visible ? implicitHeight : 0
-              spacing: Style.spacing.sm
+              spacing: 0
 
               Button {
                 text: "Today"
@@ -806,6 +918,14 @@ Panel {
               foreground: root.contentForeground
             }
 
+            PanelSectionHeader {
+              visible: root.apiToken !== ""
+              height: visible ? implicitHeight : 0
+              text: root.quickViewLabel
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
             ListView {
               id: taskListView
               width: parent.width
@@ -815,12 +935,15 @@ Panel {
               boundsBehavior: Flickable.StopAtBounds
               interactive: contentHeight > height
               model: root.tasks
+              currentIndex: root.selectedTaskIndex
 
               delegate: TaskRow {
                 id: delegateRow
                 required property var modelData
+                required property int index
                 width: taskListView.width
                 task: modelData
+                hasCursor: root.taskCursorActive && index === root.selectedTaskIndex
               }
             }
 

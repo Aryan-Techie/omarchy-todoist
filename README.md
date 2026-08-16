@@ -47,11 +47,12 @@ omarchy bar put io.github.aryan-techie.todoist --section right
 That's it — the panel switches to your task list and the bar starts showing
 your count.
 
+The panel drops right below its bar icon (not centered on the bar).
+
 ## Usage
 
 - **Open/close**: click the bar icon, your keyboard shortcut (see below), or
   `omarchy-shell shell toggle io.github.aryan-techie.todoist`.
-- `Escape` closes the panel.
 - Click **Today**, **Inbox**, or **All** to switch views.
 - Click a task's circle to mark it complete.
 - Type in the box at the top of the list and press Enter (or click **Add**)
@@ -59,6 +60,21 @@ your count.
 - The ↻ icon refreshes the list; the ⚙ icon opens Settings, where you can
   change the filter, set a keyboard shortcut, or remove your token.
 - Middle-click the bar icon to refresh without opening the panel.
+
+### Keyboard controls
+
+The whole panel is operable without a mouse:
+
+| Key | Action |
+| --- | --- |
+| `Escape` | Back out of Settings to the task list; press again to close the panel |
+| `Tab` / `Shift+Tab` | Cycle Today → Inbox → All (switches to the next bar panel instead, while Settings is open) |
+| `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
+| `Enter` or `Space` | Complete the selected task |
+| `r` | Refresh |
+
+Typing in the token, filter, or quick-add fields (or recording a shortcut)
+temporarily suspends these so normal typing works.
 
 ### Keyboard shortcut
 

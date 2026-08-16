@@ -12,7 +12,22 @@ launch-readiness.
   to toggle the panel, applied safely to `bindings.lua` (backup + reload +
   auto-rollback).
 
-## v1.2 — projects & richer task views (next)
+## v1.2 — shipped
+
+- Panel now drops directly below its bar icon instead of centering on the
+  bar (`centerOnBar: false`).
+- Full keyboard control: two-stage `Escape` (Settings → task list → close),
+  `Tab`/`Shift+Tab` cycles the quick-view tabs, `↑`/`↓`/`j`/`k` moves a
+  selection cursor through the task list, `Enter`/`Space` completes the
+  selected task, `r` refreshes.
+- Visual pass inspired by the bundled Agent (Claude Code) panel: icon next
+  to the title, a small-caps subtitle line showing the active view + task
+  count, a tightened segmented-control look for the Today/Inbox/All tabs,
+  and a `PanelSectionHeader` label above the list — reusing the same shared
+  Ui components the rest of the shell's panels use rather than one-off
+  styling.
+
+## v1.3 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -21,7 +36,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.3 — task editing
+## v1.4 — task editing
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -31,7 +46,7 @@ launch-readiness.
   endpoint already supports this, just needs UI.
 - Edit task content inline.
 
-## v1.4 — comments & subtasks
+## v1.5 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
