@@ -32,6 +32,25 @@ Panel {
   property string quickView: "today"
   property bool settingsLoaded: false
   property bool settingsView: true
+  // Gives keyboard nav a sensible starting point regardless of how Settings
+  // was entered/left (gear click, "p", or the initial open-with-no-token
+  // case) — without this, Tab/arrows in a freshly opened Settings would
+  // have nothing focused to step from.
+  onSettingsViewChanged: {
+    if (!root.opened) return
+    Qt.callLater(function() {
+      if (!root.opened) return
+      if (root.settingsView) {
+        // Always start scrolled to the top — the Flickable is shared with
+        // the task list, so a deep scroll position from a long task list
+        // would otherwise carry over and land Settings mid-scroll.
+        scroll.contentY = 0
+        if (tokenField) tokenField.forceActiveFocus()
+      } else {
+        keyCatcher.forceActiveFocus()
+      }
+    })
+  }
 
   property var tasks: []
   readonly property int taskCount: tasks.length
@@ -208,6 +227,78 @@ Panel {
   function setPanelHeight(height) {
     root.panelHeight = Math.max(240, Math.min(800, height))
     persistSettings()
+  }
+
+  // ---- Settings keyboard navigation. An explicit ordered chain (not
+  //      native Tab-focus-traversal — PanelKeyCatcher intercepts Tab itself
+  //      via Keys.priority: BeforeItem, so relying on Qt's own chain would
+  //      never see it) that Tab/Shift+Tab and Up/Down both walk while
+  //      Settings is open. Conditionally-visible controls (Remove token,
+  //      the keybind recorder's two different button sets) are filtered in
+  //      or out here rather than kept as fixed slots.
+  function settingsFocusChain() {
+    var chain = [tokenField, saveTokenButton]
+    if (root.apiToken !== "") chain.push(removeTokenButton)
+    chain.push(filterField, filterApplyButton)
+    if (root.recordingKeybind) {
+      chain.push(applyKeybindButton, cancelKeybindButton)
+    } else {
+      chain.push(keybindDefaultButton, recordCustomButton)
+      if (root.keybindCombo !== "") chain.push(removeKeybindButton)
+    }
+    // openTodoistButton is deliberately not part of the chain — it launches
+    // an external browser, which can steal window focus from the panel
+    // mid-navigation. Still reachable by mouse or the "t" shortcut.
+    chain.push(refreshNowButton, keyboardShortcutsButton)
+    chain.push(widthMinusButton, widthPlusButton, heightMinusButton, heightPlusButton)
+    // A disabled item silently rejects forceActiveFocus() in Qt Quick —
+    // Tab has to skip past it rather than try to land there and fail.
+    return chain.filter(function(item) { return item && item.enabled !== false })
+  }
+
+  function moveSettingsFocus(direction) {
+    var chain = root.settingsFocusChain()
+    if (chain.length === 0) return
+    var currentIndex = -1
+    for (var i = 0; i < chain.length; i++) {
+      if (chain[i] && chain[i].activeFocus) { currentIndex = i; break }
+    }
+    var next = currentIndex === -1 ? 0 : (currentIndex + direction + chain.length) % chain.length
+    if (chain[next]) {
+      chain[next].forceActiveFocus()
+      Qt.callLater(function() { root.ensureSettingsControlVisible(chain[next]) })
+    }
+  }
+
+  // Settings shares one Flickable with the task list, so a control the
+  // chain just focused can easily land outside the currently-scrolled
+  // region — scroll just enough to bring it fully into view either way.
+  function ensureSettingsControlVisible(item) {
+    if (!item) return
+    var pos = item.mapToItem(mainColumn, 0, 0)
+    var itemTop = pos.y
+    var itemBottom = pos.y + item.height
+    if (itemTop < scroll.contentY) {
+      scroll.contentY = Math.max(0, itemTop - Style.spacing.sm)
+    } else if (itemBottom > scroll.contentY + scroll.height) {
+      scroll.contentY = itemBottom - scroll.height + Style.spacing.sm
+    }
+  }
+
+  function openTodoistWebsite() {
+    openUrlProc.command = ["xdg-open", "https://app.todoist.com/app/today"]
+    openUrlProc.running = true
+  }
+
+  function activateFocusedSettingsControl() {
+    var chain = root.settingsFocusChain()
+    for (var i = 0; i < chain.length; i++) {
+      var item = chain[i]
+      if (item && item.activeFocus && typeof item.clicked === "function") {
+        item.clicked()
+        return
+      }
+    }
   }
 
   // ---- Quick views. "today"/"inbox" hit /tasks/filter with a canned query;
@@ -668,6 +759,33 @@ Panel {
     onTriggered: root.refresh()
   }
 
+  // ---- Settings' keyboard-navigable controls. Plain Button/PanelActionButton
+  //      with focusable:true still won't cycle via Tab here: once a button
+  //      genuinely holds Qt's activeFocus, PanelKeyCatcher's
+  //      Keys.priority: BeforeItem interception stops applying to it (that
+  //      mechanism only intercepts for whichever item currently holds
+  //      activeFocus — normally keyCatcher itself, never a focused
+  //      descendant). Each control has to catch Tab/Backtab itself, same as
+  //      tokenField/filterField already do, so this wraps that once instead
+  //      of repeating it on every button.
+  component NavButton: Button {
+    focusable: true
+    activeFocusOnTab: false
+    Keys.onPressed: function(event) {
+      if (event.key === Qt.Key_Tab) { root.moveSettingsFocus(1); event.accepted = true }
+      else if (event.key === Qt.Key_Backtab) { root.moveSettingsFocus(-1); event.accepted = true }
+    }
+  }
+
+  component NavActionButton: PanelActionButton {
+    focusable: true
+    activeFocusOnTab: false
+    Keys.onPressed: function(event) {
+      if (event.key === Qt.Key_Tab) { root.moveSettingsFocus(1); event.accepted = true }
+      else if (event.key === Qt.Key_Backtab) { root.moveSettingsFocus(-1); event.accepted = true }
+    }
+  }
+
   // ---- One task row: complete button + content + due label. ----------
   component TaskRow: Item {
     id: row
@@ -808,16 +926,16 @@ Panel {
         if (root.settingsView) root.settingsView = false
         else root.close()
       }
-      // Tab cycles the quick-view tabs while the task list is showing;
-      // Settings has no tabs of its own, so Tab falls back to the shell's
-      // usual "switch to the next bar panel" behavior there.
+      // Tab walks the Settings focus chain while Settings is showing, and
+      // cycles the quick-view tabs otherwise.
       onTabRequested: function(direction) {
-        if (root.settingsView) root.switchPanel(direction)
+        if (root.settingsView) root.moveSettingsFocus(direction)
         else root.cycleQuickView(direction)
       }
       onMoveRequested: function(dx, dy) {
-        if (root.settingsView || dy === 0) return
-        root.moveTaskCursor(dy)
+        if (dy === 0) return
+        if (root.settingsView) root.moveSettingsFocus(dy)
+        else root.moveTaskCursor(dy)
       }
       // Enter fires returnRequested then activateRequested, back to back,
       // for the same keypress — returnRequested opens the task in the
@@ -829,9 +947,15 @@ Panel {
         root.suppressNextActivate = true
         root.openSelectedTaskInBrowser()
       }
+      // PanelKeyCatcher intercepts Enter/Space before a focused Button ever
+      // sees them (Keys.priority: BeforeItem consumes the event first), so
+      // Settings has to explicitly re-trigger whichever control has focus.
+      // TextFields aren't handled here — they're covered by the `blocked`
+      // guard above instead, which lets Enter reach their own onAccepted.
       onActivateRequested: {
         if (root.suppressNextActivate) { root.suppressNextActivate = false; return }
-        if (!root.settingsView) root.activateSelectedTask()
+        if (root.settingsView) { root.activateFocusedSettingsControl(); return }
+        root.activateSelectedTask()
       }
       // "x" is this shell's established delete shortcut (see
       // Ui/PanelKeyCatcher.qml) — the physical Delete key has no printable
@@ -843,7 +967,10 @@ Panel {
         if (t === "?") { root.helpOpen = !root.helpOpen; return }
         if (t === "r" || t === "R") { root.refresh(); return }
         if (t === "p" || t === "P") { root.settingsView = !root.settingsView; return }
-        if (root.settingsView) return
+        if (root.settingsView) {
+          if (t === "t" || t === "T") root.openTodoistWebsite()
+          return
+        }
         if (t === "q" || t === "Q") { quickAddField.forceActiveFocus(); return }
         if (t === "e" || t === "E") { root.startEditSelectedTask(); return }
         if (t === "t" || t === "T") { root.selectQuickView("today"); return }
@@ -958,22 +1085,38 @@ Panel {
               id: tokenField
               width: parent.width
               password: true
+              activeFocusOnTab: false
               placeholderText: root.apiToken !== "" ? "Token saved — paste a new one to replace it" : "API token"
               text: root.tokenDraft
               onTextChanged: root.tokenDraft = text
               onAccepted: root.saveToken()
+              // Tab/Backtab need the raw Keys.onPressed form, not the
+              // Keys.onTabPressed/onBacktabPressed convenience handlers —
+              // Qt Quick's TextInput has its own special native handling for
+              // the Tab key that runs ahead of those convenience signals, so
+              // they never actually fire here. Escape works fine as a
+              // convenience handler (same gap quickAddField had: this field
+              // having focus blocks PanelKeyCatcher, so Escape needs its own
+              // handler here rather than falling through to onCloseRequested).
+              Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Tab) { root.moveSettingsFocus(1); event.accepted = true }
+                else if (event.key === Qt.Key_Backtab) { root.moveSettingsFocus(-1); event.accepted = true }
+              }
+              Keys.onEscapePressed: root.settingsView = false
             }
 
             Row {
               spacing: Style.spacing.sm
 
-              Button {
+              NavButton {
+                id: saveTokenButton
                 text: "Save token"
                 enabled: root.tokenDraft.trim() !== ""
                 onClicked: root.saveToken()
               }
 
-              Button {
+              NavButton {
+                id: removeTokenButton
                 text: "Remove token"
                 visible: root.apiToken !== ""
                 onClicked: root.clearToken()
@@ -1006,11 +1149,17 @@ Panel {
               TextField {
                 id: filterField
                 width: parent.width - filterApplyButton.width - Style.spacing.sm
+                activeFocusOnTab: false
                 text: root.filterQuery
                 onAccepted: root.applyFilter(text)
+                Keys.onPressed: function(event) {
+                  if (event.key === Qt.Key_Tab) { root.moveSettingsFocus(1); event.accepted = true }
+                  else if (event.key === Qt.Key_Backtab) { root.moveSettingsFocus(-1); event.accepted = true }
+                }
+                Keys.onEscapePressed: root.settingsView = false
               }
 
-              Button {
+              NavButton {
                 id: filterApplyButton
                 text: "Apply"
                 onClicked: root.applyFilter(filterField.text)
@@ -1043,20 +1192,23 @@ Panel {
                 visible: !root.recordingKeybind
                 spacing: Style.spacing.sm
 
-                Button {
+                NavButton {
+                  id: keybindDefaultButton
                   text: "Ctrl+Super+Y"
                   selected: root.keybindCombo === "CTRL + SUPER + Y"
                   enabled: root.keybindApplyStatus !== "applying" && root.keybindCombo !== "CTRL + SUPER + Y"
                   onClicked: root.applyKeybindCombo("CTRL + SUPER + Y")
                 }
 
-                Button {
+                NavButton {
+                  id: recordCustomButton
                   text: "Record custom…"
                   enabled: root.keybindApplyStatus !== "applying"
                   onClicked: root.startRecordingKeybind()
                 }
 
-                Button {
+                NavButton {
+                  id: removeKeybindButton
                   text: "Remove"
                   visible: root.keybindCombo !== ""
                   enabled: root.keybindApplyStatus !== "applying"
@@ -1105,13 +1257,15 @@ Panel {
                 Row {
                   spacing: Style.spacing.sm
 
-                  Button {
+                  NavButton {
+                    id: applyKeybindButton
                     text: "Apply"
                     enabled: root.pendingKeybindCombo !== "" && root.keybindApplyStatus !== "applying"
                     onClicked: root.applyKeybindCombo(root.pendingKeybindCombo)
                   }
 
-                  Button {
+                  NavButton {
+                    id: cancelKeybindButton
                     text: "Cancel"
                     onClicked: root.cancelRecordingKeybind()
                   }
@@ -1152,17 +1306,35 @@ Panel {
                 fontFamily: root.contentFontFamily
               }
 
-              Row {
-                spacing: Style.spacing.sm
+              Column {
+                width: parent.width
+                spacing: Style.spacing.xs
 
-                Button {
-                  text: root.loading ? "Refreshing…" : "Refresh now"
+                NavButton {
+                  id: refreshNowButton
+                  width: parent.width
+                  leftAlign: true
+                  bordered: true
+                  text: root.loading ? "Refreshing…" : "Refresh now (r)"
                   enabled: root.apiToken !== "" && !root.loading
                   onClicked: root.refresh()
                 }
 
-                Button {
-                  text: "Keyboard shortcuts"
+                NavButton {
+                  id: openTodoistButton
+                  width: parent.width
+                  leftAlign: true
+                  bordered: true
+                  text: "Open Todoist (t)"
+                  onClicked: root.openTodoistWebsite()
+                }
+
+                NavButton {
+                  id: keyboardShortcutsButton
+                  width: parent.width
+                  leftAlign: true
+                  bordered: true
+                  text: "Keyboard shortcuts (?)"
                   onClicked: root.helpOpen = true
                 }
               }
@@ -1191,51 +1363,98 @@ Panel {
                 font.pixelSize: Style.font.bodySmall
               }
 
-              Row {
-                spacing: Style.spacing.sm
+              Column {
+                width: parent.width
+                spacing: Style.spacing.xs
 
-                PanelActionButton {
-                  iconText: "−"
-                  foreground: root.contentForeground
-                  onClicked: root.setPanelWidth(root.panelWidth - 20)
+                Item {
+                  width: parent.width
+                  height: Math.max(widthLabelText.implicitHeight, widthButtonsRow.implicitHeight) + Style.spacing.sm * 2
+
+                  BorderSurface {
+                    anchors.fill: parent
+                    radius: Style.cornerRadius
+                    color: "transparent"
+                    borderSpec: Border.controlSpec("normal", root.contentForeground, Color.accent)
+                  }
+
+                  Text {
+                    id: widthLabelText
+                    text: "Width  " + root.panelWidth + "px"
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.body
+                    anchors.left: parent.left
+                    anchors.leftMargin: Style.spacing.sm
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Row {
+                    id: widthButtonsRow
+                    spacing: Style.spacing.xs
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.spacing.sm
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    NavActionButton {
+                      id: widthMinusButton
+                      iconText: "−"
+                      foreground: root.contentForeground
+                      onClicked: root.setPanelWidth(root.panelWidth - 20)
+                    }
+
+                    NavActionButton {
+                      id: widthPlusButton
+                      iconText: "+"
+                      foreground: root.contentForeground
+                      onClicked: root.setPanelWidth(root.panelWidth + 20)
+                    }
+                  }
                 }
 
-                Text {
-                  text: "W " + root.panelWidth
-                  color: root.contentForeground
-                  font.family: root.contentFontFamily
-                  font.pixelSize: Style.font.body
-                  anchors.verticalCenter: parent.verticalCenter
-                }
+                Item {
+                  width: parent.width
+                  height: Math.max(heightLabelText.implicitHeight, heightButtonsRow.implicitHeight) + Style.spacing.sm * 2
 
-                PanelActionButton {
-                  iconText: "+"
-                  foreground: root.contentForeground
-                  onClicked: root.setPanelWidth(root.panelWidth + 20)
-                }
-              }
+                  BorderSurface {
+                    anchors.fill: parent
+                    radius: Style.cornerRadius
+                    color: "transparent"
+                    borderSpec: Border.controlSpec("normal", root.contentForeground, Color.accent)
+                  }
 
-              Row {
-                spacing: Style.spacing.sm
+                  Text {
+                    id: heightLabelText
+                    text: "Height  " + root.panelHeight + "px"
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.body
+                    anchors.left: parent.left
+                    anchors.leftMargin: Style.spacing.sm
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
 
-                PanelActionButton {
-                  iconText: "−"
-                  foreground: root.contentForeground
-                  onClicked: root.setPanelHeight(root.panelHeight - 20)
-                }
+                  Row {
+                    id: heightButtonsRow
+                    spacing: Style.spacing.xs
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.spacing.sm
+                    anchors.verticalCenter: parent.verticalCenter
 
-                Text {
-                  text: "H " + root.panelHeight
-                  color: root.contentForeground
-                  font.family: root.contentFontFamily
-                  font.pixelSize: Style.font.body
-                  anchors.verticalCenter: parent.verticalCenter
-                }
+                    NavActionButton {
+                      id: heightMinusButton
+                      iconText: "−"
+                      foreground: root.contentForeground
+                      onClicked: root.setPanelHeight(root.panelHeight - 20)
+                    }
 
-                PanelActionButton {
-                  iconText: "+"
-                  foreground: root.contentForeground
-                  onClicked: root.setPanelHeight(root.panelHeight + 20)
+                    NavActionButton {
+                      id: heightPlusButton
+                      iconText: "+"
+                      foreground: root.contentForeground
+                      onClicked: root.setPanelHeight(root.panelHeight + 20)
+                    }
+                  }
                 }
               }
             }

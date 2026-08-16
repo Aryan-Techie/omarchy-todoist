@@ -13,8 +13,9 @@ Tracks what's done and what's left before submitting to
 - [x] Safe install — no destructive/unexpected system changes on enable
 - [x] Safe removal — documented what `omarchy plugin remove` does and
       doesn't clean up (state file, optional keybind line)
-- [ ] Preview image (`preview.png`) — optional but recommended; not yet
-      captured
+- [x] Preview image (`preview.png`) — captured, shown in README
+
+      ![Todoist panel showing the Today view](preview.png)
 
 ## Functional verification
 
@@ -55,8 +56,12 @@ Tracks what's done and what's left before submitting to
 - [ ] Walk the full keyboard path with no mouse: open via shortcut → Tab
       through Today/Inbox/All → arrow through tasks → Enter to complete →
       `r` to refresh → Escape → Escape to close
-- [ ] Confirm Tab still falls through to "switch to next bar panel" while
-      Settings is open (not quick-view cycling there)
+- [x] v1.10: Tab/Shift+Tab and the arrow keys now walk every Settings
+      control in order instead of falling through to bar-panel switching —
+      confirmed via screenshots that Tab correctly skips the disabled "Save
+      token" button and lands on "Remove token," and that the Flickable
+      scrolls to keep the focused control in view as focus moves deeper into
+      the list.
 - [ ] Confirm typing in the token/filter/quick-add fields, or recording a
       shortcut, isn't disrupted by the new `r`/arrow/Tab handlers (the
       `blocked` guard should suspend them all while a field has focus)
@@ -151,6 +156,13 @@ Tracks what's done and what's left before submitting to
       unconfirmed) turned out not to be the real fix — the user clarified
       nothing was shifting, it was just insufficient padding around the
       whole panel. v1.9.3 bumped `KeyboardPanel`'s padding 14px → 20px.
+- [ ] **User to re-test (v1.10, visual only — not re-verified by
+      screenshot this round per the user's own request)**: confirm
+      Settings → Advanced now renders as two vertically stacked bordered
+      blocks (Width, then Height), each with its label and `−`/`+` steppers
+      inside one bordered card, matching the General section's block style —
+      and that Tab/arrow navigation still lands correctly on all four
+      stepper buttons.
 
 ## Known, accepted issues
 
@@ -167,7 +179,7 @@ Tracks what's done and what's left before submitting to
 
 - [ ] Work through the "Functional verification" list above with the live
       account
-- [ ] Decide on `preview.png` — either capture one or submit without it
+- [x] Decide on `preview.png` — captured, in repo root and README
 - [ ] Re-read README top to bottom as a first-time installer would
 - [ ] Bump `manifest.json` version if anything changes after this point
 - [ ] Open the submission issue from the omarchyplugins.com page (repo link,

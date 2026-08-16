@@ -1,9 +1,11 @@
-# Todoist for Omarchy
+# ✓ Todoist for Omarchy
 
 A [Todoist](https://www.todoist.com/) bar widget for [Omarchy](https://omarchy.org/). The
 bar shows how many tasks are due today or overdue; click it for a popup with
 the full list, a checkbox to complete each task, and a box to quickly add new
 ones — all without leaving the keyboard.
+
+![Todoist panel showing the Today view, color-coded by priority](preview.png)
 
 ## Features
 
@@ -75,9 +77,9 @@ The whole panel is operable without a mouse:
 
 | Key | Action |
 | --- | --- |
-| `Escape` | Back out of Settings to the task list; press again to close the panel. While the Add-a-task box has focus, just leaves the box instead |
-| `Tab` / `Shift+Tab` | Cycle Today → Inbox → All (switches to the next bar panel instead, while Settings is open) |
-| `t` / `i` / `a` | Jump straight to the Today, Inbox, or All view |
+| `Escape` | Back out of Settings to the task list (works from any Settings field too); press again to close the panel. While the Add-a-task box has focus, just leaves the box instead |
+| `Tab` / `Shift+Tab` | Cycle Today → Inbox → All. Inside Settings, instead walks every control in order — token field, Save/Remove token, filter field + Apply, keybind buttons, and the General/Advanced buttons and steppers — scrolling as needed to keep the focused control in view |
+| `t` / `i` / `a` | Jump straight to the Today, Inbox, or All view. Inside Settings, `t` opens Todoist in the browser instead |
 | `p` | Toggle Settings open/closed |
 | `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
 | `Enter` | Open the selected task on the Todoist website, then close the panel |

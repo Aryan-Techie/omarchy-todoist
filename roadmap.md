@@ -215,7 +215,31 @@ launch-readiness.
   too close to an edge" early next time similar wording comes up, rather
   than assuming a dynamic bug from words like "overflow"/"shift" alone.
 
-## v1.10 — projects & richer task views (next)
+## v1.10 — keyboard-navigable Settings — shipped
+
+- Settings is now fully operable without a mouse: `Tab`/`Shift+Tab` and the
+  arrow keys walk an explicit focus chain across every control (token field,
+  Save/Remove token, filter field + Apply, keybind buttons, General and
+  Advanced buttons/steppers), skipping any control that's currently disabled
+  (a disabled item silently rejects `forceActiveFocus()` in Qt Quick — the
+  chain now filters those out itself rather than trying and failing to land
+  on them). Focus scrolls the Settings panel into view as it moves.
+- `Escape` now actually backs out of the token/filter fields — it previously
+  had no effect there because those fields never got the same
+  `Keys.onEscapePressed` handler the quick-add field already had.
+- New `t` shortcut inside Settings opens Todoist in the browser
+  (`xdg-open https://app.todoist.com/app/today`) — deliberately left out of
+  the Tab/arrow focus chain, since launching an external app mid-keyboard
+  navigation reproducibly stole the panel's window focus; still reachable by
+  mouse or `t`.
+- **General** and **Advanced** sections both switched from a horizontal `Row`
+  (which visibly overflowed and truncated button labels, e.g. "Keybo…") to
+  vertical stacks of full-width bordered blocks — General as one button per
+  row (Refresh now / Open Todoist / Keyboard shortcuts), Advanced as a
+  labeled width block and a labeled height block, each with its own `−`/`+`
+  steppers.
+
+## v1.11 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -224,7 +248,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.11 — more task actions
+## v1.12 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -234,7 +258,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.12 — comments & subtasks
+## v1.13 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
