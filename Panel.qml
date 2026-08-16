@@ -65,6 +65,13 @@ Panel {
 
   property bool helpOpen: false
 
+  // Fixed popup size, user-adjustable from Settings → Advanced. Deliberately
+  // NOT derived from content (mainColumn.implicitHeight) — letting the
+  // window grow/shrink with task count is what was causing content to
+  // overflow past the card; a fixed size scrolls instead.
+  property int panelWidth: 340
+  property int panelHeight: 480
+
   property bool loading: false
   property string errorText: ""
 
@@ -141,6 +148,8 @@ Panel {
     if (typeof parsed.quickView === "string" && ["today", "inbox", "all", "custom"].indexOf(parsed.quickView) !== -1)
       root.quickView = parsed.quickView
     if (typeof parsed.keybind === "string") root.keybindCombo = parsed.keybind
+    if (typeof parsed.panelWidth === "number") root.panelWidth = Math.max(260, Math.min(700, parsed.panelWidth))
+    if (typeof parsed.panelHeight === "number") root.panelHeight = Math.max(240, Math.min(800, parsed.panelHeight))
     root.settingsLoaded = true
     root.settingsView = root.apiToken === ""
     if (root.apiToken !== "") refresh()
@@ -151,7 +160,9 @@ Panel {
       apiToken: root.apiToken,
       filter: root.filterQuery,
       quickView: root.quickView,
-      keybind: root.keybindCombo
+      keybind: root.keybindCombo,
+      panelWidth: root.panelWidth,
+      panelHeight: root.panelHeight
     }, null, 2) + "\n")
     // The token is a secret; keep the file readable only by the user. A
     // short defer gives the atomic write below somewhere to land first.
@@ -186,6 +197,17 @@ Panel {
     root.filterQuery = next
     persistSettings()
     refresh()
+  }
+
+  // ---- Popup size (Settings → Advanced).
+  function setPanelWidth(width) {
+    root.panelWidth = Math.max(260, Math.min(700, width))
+    persistSettings()
+  }
+
+  function setPanelHeight(height) {
+    root.panelHeight = Math.max(240, Math.min(800, height))
+    persistSettings()
   }
 
   // ---- Quick views. "today"/"inbox" hit /tasks/filter with a canned query;
@@ -754,8 +776,11 @@ Panel {
     // Drops right below the bar icon, not centered on the whole bar.
     centerOnBar: false
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(340))
-    contentHeight: panel.fittedContentHeight(mainColumn.implicitHeight, Style.space(520))
+    // Fixed size (Settings → Advanced), not derived from mainColumn's
+    // implicitHeight — content that doesn't fit scrolls inside the
+    // Flickable below rather than resizing the window around it.
+    contentWidth: panel.fittedContentWidth(root.panelWidth)
+    contentHeight: panel.fittedContentHeight(root.panelHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -879,7 +904,7 @@ Panel {
               spacing: Style.spacing.sm
 
               PanelActionButton {
-                iconText: root.settingsView ? "✕" : "⚙"
+                iconText: root.settingsView ? "✕" : "󰒓"
                 tooltipText: root.settingsView ? "Close settings (Esc)" : "Settings (p)"
                 foreground: root.contentForeground
                 onClicked: root.settingsView = !root.settingsView
@@ -1124,6 +1149,78 @@ Panel {
                 Button {
                   text: "Keyboard shortcuts"
                   onClicked: root.helpOpen = true
+                }
+              }
+            }
+
+            PanelSeparator {
+              foreground: root.contentForeground
+            }
+
+            Column {
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              PanelSectionHeader {
+                text: "ADVANCED"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+              }
+
+              Text {
+                width: parent.width
+                text: "Popup size — fixed regardless of task count; content scrolls instead of resizing the panel."
+                wrapMode: Text.WordWrap
+                color: Qt.darker(root.contentForeground, 1.3)
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Row {
+                spacing: Style.spacing.sm
+
+                PanelActionButton {
+                  iconText: "−"
+                  foreground: root.contentForeground
+                  onClicked: root.setPanelWidth(root.panelWidth - 20)
+                }
+
+                Text {
+                  text: "W " + root.panelWidth
+                  color: root.contentForeground
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.body
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                PanelActionButton {
+                  iconText: "+"
+                  foreground: root.contentForeground
+                  onClicked: root.setPanelWidth(root.panelWidth + 20)
+                }
+              }
+
+              Row {
+                spacing: Style.spacing.sm
+
+                PanelActionButton {
+                  iconText: "−"
+                  foreground: root.contentForeground
+                  onClicked: root.setPanelHeight(root.panelHeight - 20)
+                }
+
+                Text {
+                  text: "H " + root.panelHeight
+                  color: root.contentForeground
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.body
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                PanelActionButton {
+                  iconText: "+"
+                  foreground: root.contentForeground
+                  onClicked: root.setPanelHeight(root.panelHeight + 20)
                 }
               }
             }

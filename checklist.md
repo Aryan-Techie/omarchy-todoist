@@ -116,7 +116,7 @@ Tracks what's done and what's left before submitting to
 - [ ] Open the `?` overlay, confirm all 12 shortcut lines are fully inside
       the bordered card with real padding on every side, none touching or
       crossing the border
-- [ ] Confirm the header now shows only the ⚙ icon (↻ and "?" removed)
+- [ ] Confirm the header now shows only the gear icon (↻ and "?" removed)
 - [ ] Open Settings, confirm four labeled sections (Account, Default
       filter, Keyboard shortcut, General) render cleanly with no overlap
 - [ ] Click **Refresh now** in Settings → General, confirm it shows
@@ -125,6 +125,17 @@ Tracks what's done and what's left before submitting to
       like it's working"
 - [ ] Type a filter in Settings → Default filter and click **Apply** (not
       just pressing Enter), confirm it switches the task list to that filter
+- [ ] Switch between Today/Inbox/All and Settings repeatedly, confirm the
+      popup window itself never visibly resizes — only its scrollable
+      content changes (this was the actual "overflowing" complaint; the fix
+      was making the window size fixed instead of content-driven)
+- [ ] Settings → Advanced: click `W +`/`W −` and `H +`/`H −` a few times,
+      confirm the popup visibly resizes immediately and the new size sticks
+      after closing/reopening the panel (persisted to settings.json)
+- [ ] Confirm the gear icon (⚙ → 󰒓) renders as a proper filled gear glyph,
+      not a missing-character box — if it renders as a box, the active font
+      doesn't have this Nerd Font codepoint and the icon should revert to
+      plain `⚙`
 
 ## Known, accepted issues
 

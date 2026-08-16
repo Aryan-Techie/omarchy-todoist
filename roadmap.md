@@ -114,7 +114,23 @@ launch-readiness.
   empty list (background refreshes of an already-populated list stay quiet,
   matching the earlier overflow fix's reasoning).
 
-## v1.8 — projects & richer task views (next)
+## v1.8 — shipped
+
+- Popup is now a **fixed size** (`panelWidth`/`panelHeight`, default 340×480)
+  instead of resizing itself around `mainColumn.implicitHeight`. Sizing the
+  window off live content was the actual root cause behind both overflow
+  reports (All view, `?` overlay) — a fixed size scrolls content inside the
+  Flickable instead of stretching/shrinking the window around it.
+- New **Settings → Advanced** section: `−`/`+` steppers for width and
+  height (20px steps, clamped 260–700 × 240–800), persisted like every other
+  setting. Pattern lifted directly from `io.github.weedwhitesandwine.omascratch`'s
+  own working "Size" steppers (`cardWidth`/`cardHeight` + `setCardWidth`/
+  `setCardHeight`), adapted from its `PanelWindow.implicitWidth/Height` to
+  this plugin's `KeyboardPanel.contentWidth/Height`.
+- Settings gear icon switched from the plain Unicode `⚙` to omascratch's
+  Nerd Font glyph (`󰒓`) for visual consistency with the rest of the bar.
+
+## v1.9 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -123,7 +139,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.9 — more task actions
+## v1.10 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -133,7 +149,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.10 — comments & subtasks
+## v1.11 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.

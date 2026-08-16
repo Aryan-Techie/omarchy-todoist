@@ -49,7 +49,9 @@ omarchy bar put io.github.aryan-techie.todoist --section right
 That's it — the panel switches to your task list and the bar starts showing
 your count.
 
-The panel drops right below its bar icon (not centered on the bar).
+The panel drops right below its bar icon (not centered on the bar), at a
+fixed size you control — see **Settings → Advanced** below. Content that
+doesn't fit scrolls inside the panel instead of resizing it.
 
 ## Usage
 
@@ -59,9 +61,9 @@ The panel drops right below its bar icon (not centered on the bar).
 - Click a task's circle to mark it complete.
 - Type in the box at the top of the list and press Enter (or click **Add**)
   to create a task — see Quick Add syntax above (`p1`, `#Project`, dates).
-- The ⚙ icon (or `p`) opens Settings, organized into **Account**, **Default
-  filter**, **Keyboard shortcut**, and **General** sections — the last one
-  has explicit **Refresh now** and **Keyboard shortcuts** buttons.
+- The gear icon (or `p`) opens Settings, organized into **Account**,
+  **Default filter**, **Keyboard shortcut**, **General** (Refresh now,
+  Keyboard shortcuts), and **Advanced** (popup size) sections.
 - Middle-click the bar icon to refresh without opening the panel, or press
   `r` while the panel's open.
 
@@ -145,7 +147,8 @@ layout, the same as any other bar widget you add or remove through
 ## State files
 
 - `~/.local/state/omarchy/io.github.aryan-techie.todoist/settings.json` —
-  your Todoist API token, filter, quick-view, and keyboard shortcut. Created
+  your Todoist API token, filter, quick-view, keyboard shortcut, and popup
+  size. Created
   on first save; the file is `chmod 600`'d right after writing since it holds
   a secret. Delete it (or use **Remove token** in Settings) to disconnect the
   plugin from your account.
