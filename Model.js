@@ -78,6 +78,31 @@ function quickAddHasDueHint(text) {
   return DUE_HINT_RE.test(text)
 }
 
+// Todoist project/label lists -> Ui/Dropdown and Ui/MultiSelect's
+// { value, label } option shape. Project value is the project id (what
+// /tasks/{id}/move wants); label value is the label's own name (what both
+// the task object's own `labels` array and Update Task's `labels` field
+// already use — no separate id round-trip needed for labels).
+function projectOptions(projects) {
+  var out = []
+  for (var i = 0; i < (projects || []).length; i++) {
+    var p = projects[i]
+    if (!p || !p.id) continue
+    out.push({ value: String(p.id), label: p.inbox_project ? "Inbox" : String(p.name || "") })
+  }
+  return out
+}
+
+function labelOptions(labels) {
+  var out = []
+  for (var i = 0; i < (labels || []).length; i++) {
+    var l = labels[i]
+    if (!l || !l.name) continue
+    out.push({ value: String(l.name), label: String(l.name) })
+  }
+  return out
+}
+
 // curl exits non-zero with an empty stdout body on HTTP errors (-f), so the
 // only signal available for a friendly message is the exit code and
 // whatever curl printed to stderr.

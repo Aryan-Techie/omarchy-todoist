@@ -199,6 +199,58 @@ Tracks what's done and what's left before submitting to
   missing-character box on a real system, the fix is a one-line revert to
   plain `⚙` (already noted above) — not a new mechanism.
 
+## Functional verification — v1.12 Advanced Task Editing (Shift+Q)
+
+- [ ] Select a task, press `Shift+Q` (not `q`, which still just focuses
+      Add-a-task): the full editor opens over the task list with title
+      pre-filled, correct priority button highlighted, due field showing
+      the task's current due string (or empty if none), project dropdown
+      showing its current project, labels multiselect showing its current
+      labels.
+- [ ] `Tab`/`Shift+Tab` walks every field in order (title → P1–P4 →
+      due → Clear due date → project → labels → Save → Cancel) with no
+      dead spots and no landing on a disabled control.
+- [ ] Change only the title, press `Enter` from the title field: confirm it
+      saves (shows "Saving…" briefly, editor closes, row updates) and
+      nothing else about the task changed.
+- [ ] Change priority via the P1–P4 buttons, save, confirm the row's
+      priority color updates and it's reflected in Todoist after a refresh.
+- [ ] Change the due field to something like "tomorrow at 5pm", save,
+      confirm Todoist parsed it the same way quick-add would.
+- [ ] Click **Clear due date**, save, confirm the task has no due date in
+      Todoist afterward (this exercises the unverified `due_string: "no
+      date"` assumption — if it does NOT clear the date, that's the one
+      thing in this feature that needs a follow-up fix).
+- [ ] Change the project via the dropdown, save, confirm the task actually
+      moved to that project in Todoist (this is the separate `/move` call —
+      worth confirming it fires correctly alongside or instead of the
+      Update call as appropriate).
+- [ ] Add and remove labels via the multiselect, save, confirm both stick
+      in Todoist.
+- [ ] Change several fields at once (title + priority + due + project +
+      labels together), save, confirm all of them landed correctly.
+- [ ] Open the editor, change nothing, press `Escape`: confirm it closes
+      with no API call and no change to the task.
+- [ ] Open the editor, change the title, press `Escape` (not Save): confirm
+      the edit is discarded — task unchanged in the list and in Todoist.
+- [ ] Clear the title field entirely and try to save: confirm it's blocked
+      with an inline "Title can't be empty" error, not silently accepted.
+- [ ] With the project dropdown or labels multiselect *open* (popup
+      expanded), confirm arrow keys/`j`/`k` navigate its options (not the
+      outer form) and `Enter`/`Space` selects without closing the whole
+      editor; `Escape` closes just the popup, not the editor.
+- [ ] Confirm the existing lightweight `e` inline title edit still works
+      exactly as before — this feature was built specifically not to touch
+      it.
+- [ ] Disconnect network (or use an invalid token) and try to save a
+      change: confirm the error shows inline in the editor, the editor
+      stays open (edits aren't lost), and Save is usable again afterward
+      once the state clears.
+- [ ] Confirm the project dropdown and labels multiselect actually populate
+      with your real projects/labels (fetched once per panel session) —
+      if either shows empty, check for a `GET /projects` or `GET /labels`
+      error in `qs log`.
+
 ## Before hitting submit
 
 - [ ] Work through the "Functional verification" list above with the live
