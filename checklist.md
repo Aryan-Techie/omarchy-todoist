@@ -87,6 +87,14 @@ Tracks what's done and what's left before submitting to
 - [ ] Complete two tasks in quick succession, confirm both eventually
       disappear (the removal delay batches to the last click, which is fine)
       and neither gets stuck showing struck-through forever
+- [ ] Press `t`/`i`/`a` from the task list, confirm each jumps straight to
+      that view (same as clicking the tab)
+- [ ] Press `p` from the task list, confirm Settings opens; press `p` again,
+      confirm it closes back to the task list (not just Escape's one-way
+      back-out)
+- [ ] Focus the Add-a-task box, type something, press `Escape`, confirm it
+      only leaves the box (focus returns to normal keyboard nav) and does
+      **not** close the panel or clear what you typed
 
 ## Known, accepted issues
 

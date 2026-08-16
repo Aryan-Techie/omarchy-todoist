@@ -69,8 +69,10 @@ The whole panel is operable without a mouse:
 
 | Key | Action |
 | --- | --- |
-| `Escape` | Back out of Settings to the task list; press again to close the panel |
+| `Escape` | Back out of Settings to the task list; press again to close the panel. While the Add-a-task box has focus, just leaves the box instead |
 | `Tab` / `Shift+Tab` | Cycle Today → Inbox → All (switches to the next bar panel instead, while Settings is open) |
+| `t` / `i` / `a` | Jump straight to the Today, Inbox, or All view |
+| `p` | Toggle Settings open/closed |
 | `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
 | `Enter` | Open the selected task on the Todoist website |
 | `Space` | Complete the selected task |

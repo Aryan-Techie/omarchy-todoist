@@ -794,9 +794,13 @@ Panel {
       }
       onTextKey: function(t) {
         if (t === "r" || t === "R") { root.refresh(); return }
+        if (t === "p" || t === "P") { root.settingsView = !root.settingsView; return }
         if (root.settingsView) return
         if (t === "q" || t === "Q") { quickAddField.forceActiveFocus(); return }
-        if (t === "e" || t === "E") root.startEditSelectedTask()
+        if (t === "e" || t === "E") { root.startEditSelectedTask(); return }
+        if (t === "t" || t === "T") { root.selectQuickView("today"); return }
+        if (t === "i" || t === "I") { root.selectQuickView("inbox"); return }
+        if (t === "a" || t === "A") root.selectQuickView("all")
       }
 
       Flickable {
@@ -1090,6 +1094,10 @@ Panel {
                 text: root.quickAddText
                 onTextChanged: root.quickAddText = text
                 onAccepted: root.submitQuickAdd()
+                // Escape here just leaves the field (back to normal keyboard
+                // nav) rather than falling through to the panel's own
+                // Escape, which would otherwise do nothing while blocked.
+                Keys.onEscapePressed: keyCatcher.forceActiveFocus()
               }
 
               Button {

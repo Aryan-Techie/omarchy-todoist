@@ -57,7 +57,16 @@ launch-readiness.
 - `e` edits the selected task's title in place (`POST /tasks/{id}`),
   `Enter` to save, `Escape` to cancel.
 
-## v1.5 — projects & richer task views (next)
+## v1.5 — shipped
+
+- Single-key view switching: `t` (Today), `i` (Inbox), `a` (All), `p`
+  (toggle Settings) — alongside the existing `Tab`/`Shift+Tab` cycling.
+- `Escape` while the Add-a-task box has focus just leaves the box (back to
+  normal keyboard nav) instead of doing nothing — it was falling through to
+  the panel's own Escape handling, which is suspended whenever any text
+  field has focus, so it previously had no visible effect at all.
+
+## v1.6 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -66,7 +75,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.6 — more task actions
+## v1.7 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -76,7 +85,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.7 — comments & subtasks
+## v1.8 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
