@@ -1116,9 +1116,7 @@ Panel {
 
               Button {
                 id: addButton
-                text: root.quickAddSubmitting ? "" : "Add"
-                iconText: root.quickAddSubmitting ? "↻" : ""
-                iconSpinning: root.quickAddSubmitting
+                text: root.quickAddSubmitting ? "Adding…" : "Add"
                 enabled: root.apiToken !== "" && !root.quickAddSubmitting && root.quickAddText.trim() !== ""
                 onClicked: root.submitQuickAdd()
               }

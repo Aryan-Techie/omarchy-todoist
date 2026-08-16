@@ -83,6 +83,12 @@ launch-readiness.
 - `?` (or the new "?" button in the header) toggles a keyboard-shortcuts
   cheat-sheet overlay.
 
+## v1.6.1 — shipped
+
+- Dropped the spinning-icon animation on the Add button while a task is
+  being created — reported as feeling "weird." Replaced with a plain
+  `Adding…` text label instead; no rotation anywhere in the plugin now.
+
 ## v1.7 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
