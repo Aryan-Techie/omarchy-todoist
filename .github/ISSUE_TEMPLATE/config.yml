@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Todoist API documentation
+    url: https://developer.todoist.com/api/v1/
+    about: For questions about Todoist's own API behavior, not this plugin
+  - name: Omarchy shell plugins manual
+    url: https://omarchy.org/manual/shell-plugins/
+    about: For questions about writing or installing Omarchy shell plugins in general

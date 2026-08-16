@@ -1,11 +1,31 @@
 # ✓ Todoist for Omarchy
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A [Todoist](https://www.todoist.com/) bar widget for [Omarchy](https://omarchy.org/). The
 bar shows how many tasks are due today or overdue; click it for a popup with
 the full list, a checkbox to complete each task, and a box to quickly add new
 ones — all without leaving the keyboard.
 
 ![Todoist panel showing the Today view, color-coded by priority](preview.png)
+
+## Contents
+
+- [Features](#features)
+- [Install](#install)
+- [Setup](#setup)
+- [Usage](#usage)
+  - [Keyboard controls](#keyboard-controls)
+  - [Keyboard shortcut](#keyboard-shortcut)
+- [External dependencies and system-level modifications](#external-dependencies-and-system-level-modifications)
+- [State files](#state-files)
+- [Uninstalling](#uninstalling)
+- [Todoist API](#todoist-api)
+- [Contributing](#contributing)
+- [Getting help](#getting-help)
+- [Changelog](#changelog)
+- [License](#license)
 
 ## Features
 
@@ -183,6 +203,20 @@ Uses the [Todoist API v1](https://developer.todoist.com/api/v1/):
 `https://app.todoist.com/app/task/{id}` in your default browser. The older
 REST API v2 was retired by Todoist in February 2026, so this plugin only
 supports the current API.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout, conventions, and how to test a change locally before opening a PR. This project follows a [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Getting help
+
+- **Found a bug?** [Open an issue](https://github.com/Aryan-Techie/omarchy-todoist/issues/new/choose) using the bug report template — it'll ask for the couple of details (plugin version, `qs log` output) that make it fixable quickly.
+- **Want a feature?** [Open a feature request](https://github.com/Aryan-Techie/omarchy-todoist/issues/new/choose).
+- **Found a security issue?** Please don't open a public issue — see [SECURITY.md](SECURITY.md) for how to report it privately.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for what's changed in each version.
 
 ## License
 

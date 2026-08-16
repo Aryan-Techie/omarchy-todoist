@@ -1,0 +1,61 @@
+name: Bug report
+description: Something isn't working the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. A few things up front:
+        - Run `omarchy plugin validate .` (from your plugin checkout) and check `qs log -p "$OMARCHY_PATH/shell"` before reporting — many issues show a clear error there.
+        - If this could reveal your Todoist data or API token, please **do not** paste raw `qs log` output or `settings.json` contents without redacting them first.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact steps that trigger it, as a numbered list.
+      placeholder: |
+        1. Open the panel
+        2. Press '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Output from `qs log -p "$OMARCHY_PATH/shell"` around when the issue happened, if any. Redact anything sensitive first.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: See `manifest.json`'s `version` field, or `omarchy plugin list`.
+    validations:
+      required: true
+
+  - type: input
+    id: omarchy-version
+    attributes:
+      label: Omarchy version
+      description: "`omarchy --version` or similar"
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and didn't find this already reported
+          required: true
+        - label: I ran `omarchy plugin validate .` and it passed (or I've included the error)
+          required: false
