@@ -14,13 +14,17 @@
 
 *Part of the [AROICE](https://aroice.in) family of tools.*
 
-[Features](#features) • [Install](#install) • [Usage](#usage) • [Contributing](#contributing)
+[Features](#features) • [Install](#install) • [Usage](#usage) • [Contributing](#contributing) • [Case Study](https://www.aryantechie.com/work/omarchy-todoist-plugin)
 
 </div>
 
 The bar shows how many tasks are due today or overdue; click it for a popup
 with the full list, a checkbox to complete each task, and a box to quickly
 add new ones — all without leaving the keyboard.
+
+📖 Read the [case study](https://www.aryantechie.com/work/omarchy-todoist-plugin)
+for the story behind this plugin — why it exists, the keyboard-first design
+constraints, and a few things that didn't work the first time.
 
 ![Todoist panel showing the Today view, color-coded by priority](preview.png)
 
