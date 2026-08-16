@@ -13,8 +13,10 @@ ones — all without leaving the keyboard.
   overdue ones picked out in red.
 - Click the circle next to a task to mark it complete (updates instantly,
   syncs to Todoist in the background).
-- Quick-add box creates a new task straight from the popup — supports
-  Todoist's natural-language due dates (e.g. `Buy milk tomorrow at 10`).
+- Quick-add box uses Todoist's own Quick Add parser — `p1`–`p4` priority,
+  `#Project`, `@label`, and natural-language due dates (`tomorrow at 5pm`,
+  `next Monday`) all work exactly like typing into Todoist itself. A bare
+  task with no date in it (`Buy milk`) defaults to due **today**.
 - **Today / Inbox / All** quick-view tabs above the list, plus a custom
   [Todoist filter](https://www.todoist.com/help/articles/introduction-to-filters-V98wIH)
   field in Settings for anything more specific (defaults to `today | overdue`).
@@ -56,7 +58,7 @@ The panel drops right below its bar icon (not centered on the bar).
 - Click **Today**, **Inbox**, or **All** to switch views.
 - Click a task's circle to mark it complete.
 - Type in the box at the top of the list and press Enter (or click **Add**)
-  to create a task.
+  to create a task — see Quick Add syntax above (`p1`, `#Project`, dates).
 - The ↻ icon refreshes the list; the ⚙ icon opens Settings, where you can
   change the filter, set a keyboard shortcut, or remove your token.
 - Middle-click the bar icon to refresh without opening the panel.
@@ -71,10 +73,15 @@ The whole panel is operable without a mouse:
 | `Tab` / `Shift+Tab` | Cycle Today → Inbox → All (switches to the next bar panel instead, while Settings is open) |
 | `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
 | `Enter` or `Space` | Complete the selected task |
+| `x` | Delete the selected task (asks for confirmation first) |
+| `q` | Jump into the Add-a-task box |
 | `r` | Refresh |
 
 Typing in the token, filter, or quick-add fields (or recording a shortcut)
-temporarily suspends these so normal typing works.
+temporarily suspends these so normal typing works. `x` for delete matches
+this shell's own convention (see `Ui/PanelKeyCatcher.qml`) rather than the
+physical Delete key, which has no printable character for a panel's key
+handler to see.
 
 ### Keyboard shortcut
 
@@ -144,8 +151,10 @@ want your token gone too.
 
 ## Todoist API
 
-Uses the [Todoist API v1](https://developer.todoist.com/api/v1/)
-(`GET /tasks/filter`, `POST /tasks`, `POST /tasks/{id}/close`). The older
+Uses the [Todoist API v1](https://developer.todoist.com/api/v1/):
+`GET /tasks/filter` (or plain `GET /tasks` for the All view), `POST
+/tasks/quick` (Quick Add, natural-language parsing) for new tasks, `POST
+/tasks/{id}/close` to complete, `DELETE /tasks/{id}` to delete. The older
 REST API v2 was retired by Todoist in February 2026, so this plugin only
 supports the current API.
 

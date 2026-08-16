@@ -27,7 +27,23 @@ launch-readiness.
   Ui components the rest of the shell's panels use rather than one-off
   styling.
 
-## v1.3 — projects & richer task views (next)
+## v1.3 — shipped
+
+- Fixed a real bug: the quick-add field grabbed keyboard focus by default on
+  every open, which silently swallowed all of v1.2's new shortcuts (arrows,
+  Tab, r) since they're suspended whenever a text field has focus. Panel now
+  only auto-focuses a field when Settings needs the token typed immediately;
+  otherwise focus stays on the general key handler.
+- Quick-add now goes through Todoist's own Quick Add parser (`POST
+  /tasks/quick`) instead of a plain create call — `p1`–`p4` priority,
+  `#Project`, `@label`, and natural-language due dates all work exactly like
+  typing into Todoist itself. A bare task with no date hint gets " today"
+  appended so it defaults to due today instead of no due date.
+- `q` jumps focus straight into the quick-add box.
+- `x` deletes the selected task via `DELETE /tasks/{id}`, with a confirm
+  dialog (`Ui/ConfirmDialog`) first since delete isn't reversible from here.
+
+## v1.4 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -36,17 +52,17 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.4 — task editing
+## v1.5 — task editing
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
 - Set/change priority from the row.
-- Delete a task (with confirmation) — currently only "complete" exists.
 - Reopen a just-completed task (undo) — Todoist's `/tasks/{id}/reopen`
   endpoint already supports this, just needs UI.
 - Edit task content inline.
+- Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 
-## v1.5 — comments & subtasks
+## v1.6 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
@@ -54,9 +70,9 @@ launch-readiness.
 ## Ideas / not committed
 
 - Multiple Todoist accounts / workspaces.
-- Natural-language due date preview while typing in quick-add (Todoist's
-  `/tasks/quick` sync-style endpoint parses this server-side; would need a
-  different response shape than the current `/tasks` create call).
+- Live preview of what Quick Add parsed (date/project/priority) before
+  submitting — `/tasks/quick` supports a `meta: true` flag that returns the
+  parse result; would need a debounced preview call as the user types.
 - Drag-to-reorder or drag-to-reschedule.
 - Notification when a task becomes overdue.
 - Completed-tasks view (`GET /tasks/completed`) — separate endpoint/pagination

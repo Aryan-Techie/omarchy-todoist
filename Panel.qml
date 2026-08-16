@@ -45,6 +45,9 @@ Panel {
   property int selectedTaskIndex: -1
   property bool taskCursorActive: false
 
+  property string pendingDeleteTaskId: ""
+  property string pendingDeleteTaskContent: ""
+
   property bool loading: false
   property string errorText: ""
 
@@ -81,10 +84,12 @@ Panel {
   function open() {
     if (root.apiToken !== "") refresh()
     root.controller.show()
-    Qt.callLater(function() {
-      if (!root.opened) return
-      if (root.settingsView) tokenField.forceActiveFocus()
-      else quickAddField.forceActiveFocus()
+    // Only steal focus into a text field when Settings needs the token
+    // typed immediately. Otherwise leave focus on keyCatcher (its own
+    // default via KeyboardPanel's focusTarget) so arrows/Tab/r/q work the
+    // instant the panel opens, instead of being swallowed by quickAddField.
+    if (root.settingsView) Qt.callLater(function() {
+      if (root.opened && root.settingsView) tokenField.forceActiveFocus()
     })
   }
 
@@ -207,6 +212,41 @@ Panel {
     if (task) root.requestComplete(task.id)
   }
 
+  // ---- Delete (the selected task, via "x" or a task row's delete button).
+  //      Confirmed first — unlike completing, this can't be undone from here.
+  function requestDeleteSelected() {
+    if (root.selectedTaskIndex < 0 || root.selectedTaskIndex >= root.tasks.length) return
+    var task = root.tasks[root.selectedTaskIndex]
+    if (!task) return
+    root.requestDeleteTask(task.id, task.content || "")
+  }
+
+  function requestDeleteTask(taskId, content) {
+    root.pendingDeleteTaskId = taskId
+    root.pendingDeleteTaskContent = content
+    confirmDialog.selectedIndex = 0
+    confirmDialog.opened = true
+  }
+
+  function cancelDeleteTask() {
+    confirmDialog.opened = false
+    root.pendingDeleteTaskId = ""
+    root.pendingDeleteTaskContent = ""
+  }
+
+  function confirmDeleteTask() {
+    confirmDialog.opened = false
+    var taskId = root.pendingDeleteTaskId
+    root.pendingDeleteTaskId = ""
+    root.pendingDeleteTaskContent = ""
+    if (taskId === "") return
+    root.tasks = root.tasks.filter(function(t) { return !t || t.id !== taskId })
+    deleteProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "DELETE",
+      "-H", "Authorization: Bearer " + root.apiToken,
+      root.apiBase + "/tasks/" + encodeURIComponent(taskId)]
+    deleteProc.running = true
+  }
+
   // ---- Task list.
   function refresh() {
     if (root.apiToken === "") {
@@ -232,17 +272,22 @@ Panel {
     listProc.running = true
   }
 
-  // ---- Quick add.
+  // ---- Quick add. Uses Todoist's own Quick Add parser (/tasks/quick) so
+  //      "p1"/"p2"/"p3"/"p4", "#Project", "@label", and natural-language
+  //      due dates work exactly like typing into Todoist itself. A bare
+  //      task with no date hint gets " today" appended so it defaults to
+  //      due today instead of no due date.
   function submitQuickAdd() {
     var content = Model.safeTrim(root.quickAddText)
     if (content === "" || root.quickAddSubmitting || root.apiToken === "") return
+    var text = Model.quickAddHasDueHint(content) ? content : (content + " today")
     root.quickAddSubmitting = true
     root.errorText = ""
     createProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
       "-H", "Authorization: Bearer " + root.apiToken,
       "-H", "Content-Type: application/json",
-      "-d", JSON.stringify({ content: content }),
-      root.apiBase + "/tasks"]
+      "-d", JSON.stringify({ text: text }),
+      root.apiBase + "/tasks/quick"]
     createProc.running = true
   }
 
@@ -433,6 +478,20 @@ Panel {
   }
 
   Process {
+    id: deleteProc
+    stderr: StdioCollector {
+      id: deleteErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.errorText = Model.errorMessageForExit(exitCode, deleteErr.text)
+        root.refresh()
+      }
+    }
+  }
+
+  Process {
     id: keybindProc
     property string pendingApply: ""
     stderr: StdioCollector {
@@ -558,7 +617,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind
+      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind || confirmDialog.opened
       // First Escape backs out of Settings to the task list; a second one
       // (now that settingsView is false) closes the panel.
       onCloseRequested: {
@@ -579,8 +638,15 @@ Panel {
       onActivateRequested: {
         if (!root.settingsView) root.activateSelectedTask()
       }
+      // "x" is this shell's established delete shortcut (see
+      // Ui/PanelKeyCatcher.qml) — the physical Delete key has no printable
+      // event.text so PanelKeyCatcher never sees it as a distinct key.
+      onDeleteRequested: {
+        if (!root.settingsView) root.requestDeleteSelected()
+      }
       onTextKey: function(t) {
-        if (t === "r" || t === "R") root.refresh()
+        if (t === "r" || t === "R") { root.refresh(); return }
+        if ((t === "q" || t === "Q") && !root.settingsView) quickAddField.forceActiveFocus()
       }
 
       Flickable {
@@ -870,7 +936,7 @@ Panel {
                 id: quickAddField
                 width: parent.width - addButton.width - Style.spacing.sm
                 enabled: root.apiToken !== ""
-                placeholderText: "Add a task…"
+                placeholderText: "Add a task… (p1, #Project, tomorrow at 5pm)"
                 text: root.quickAddText
                 onTextChanged: root.quickAddText = text
                 onAccepted: root.submitQuickAdd()
@@ -977,6 +1043,27 @@ Panel {
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.bodySmall
             }
+          }
+        }
+      }
+
+      // Overlay, declared after Flickable so it paints on top of it.
+      ConfirmDialog {
+        id: confirmDialog
+        anchors.fill: parent
+        message: "Delete \"" + root.pendingDeleteTaskContent + "\"?"
+        confirmText: "Delete"
+        background: Color.popups.background
+        foreground: root.contentForeground
+        onCanceled: root.cancelDeleteTask()
+        onConfirmed: root.confirmDeleteTask()
+
+        Item {
+          anchors.fill: parent
+          focus: confirmDialog.opened
+          Keys.onPressed: function(event) {
+            confirmDialog.handleKey(event)
+            event.accepted = true
           }
         }
       }

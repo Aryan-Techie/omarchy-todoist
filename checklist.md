@@ -60,6 +60,22 @@ Tracks what's done and what's left before submitting to
 - [ ] Confirm typing in the token/filter/quick-add fields, or recording a
       shortcut, isn't disrupted by the new `r`/arrow/Tab handlers (the
       `blocked` guard should suspend them all while a field has focus)
+- [x] Found and fixed a real bug via user report: quick-add auto-focused on
+      every panel open, which silently blocked every v1.2 shortcut (arrows,
+      Tab, r) since they're suspended whenever a text field has focus. Fixed
+      in v1.3 — panel only steals focus into a field when opening straight
+      into Settings.
+- [ ] Quick-add: type a bare task ("Buy milk"), confirm it lands due today
+      in Todoist
+- [ ] Quick-add: type `p1` (and `#Project`, `@label` if you have real ones),
+      confirm Todoist applied them
+- [ ] Quick-add: type an explicit date ("Buy milk tomorrow"), confirm the
+      auto-appended "today" heuristic did NOT also get added (should be due
+      tomorrow, not today)
+- [ ] Press `q` from the task list, confirm focus lands in the quick-add box
+- [ ] Arrow to a task, press `x`, confirm the confirm dialog shows the right
+      task title, **Escape**/click-Cancel backs out without deleting, and
+      confirming actually deletes it in Todoist
 
 ## Known, accepted issues
 

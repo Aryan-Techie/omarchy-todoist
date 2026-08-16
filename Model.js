@@ -67,6 +67,17 @@ function sortedTasks(tasks) {
   return list
 }
 
+// Heuristic only — Quick Add's own NLP (see /tasks/quick) does the real
+// parsing server-side. This just decides whether *we* should tack on
+// " today" before sending, so a bare "Buy milk" defaults to due today
+// instead of no due date, without stomping on a date the user already typed
+// ("tomorrow", "next Monday", "3/5", "at 5pm", a deadline in {}, etc.).
+var DUE_HINT_RE = /\b(today|tonight|tomorrow|tmrw|tom|next|mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\d{1,2}[\/\-]\d{1,2}|\d{1,2}\s*(am|pm)\b|\bat\s+\d|\bin\s+\d+\s*(day|week|hour|min)|\{[^}]*\}/i
+
+function quickAddHasDueHint(text) {
+  return DUE_HINT_RE.test(text)
+}
+
 // curl exits non-zero with an empty stdout body on HTTP errors (-f), so the
 // only signal available for a friendly message is the exit code and
 // whatever curl printed to stderr.
