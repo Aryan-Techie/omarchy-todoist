@@ -27,8 +27,11 @@ ones — all without leaving the keyboard.
 - Settings view (gear icon) to paste your API token and manage the above.
 - Optional global keyboard shortcut (**Ctrl+Super+Y** by default, or record
   your own) to toggle the panel from anywhere — no mouse required.
-- Refreshes automatically every 5 minutes while open, every 15 minutes in the
-  background, and immediately whenever you open the popup.
+- Refreshes immediately whenever you open the popup, and whenever you add,
+  complete, edit, or delete a task — not just on a timer. Otherwise polls
+  every 2 minutes while the popup's open, or every 20 minutes in the
+  background while it's closed (never both at once). Overlapping refresh
+  requests are coalesced into one, so nothing fires twice.
 
 ## Install
 

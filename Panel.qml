@@ -93,6 +93,10 @@ Panel {
 
   property bool loading: false
   property string errorText: ""
+  // Set when refresh() is called while a fetch is already in flight —
+  // listProc's own exit handler starts one more fetch once it sees this,
+  // so a triggering action never has its refresh silently dropped.
+  property bool refreshPending: false
 
   property string tokenDraft: ""
   property string quickAddText: ""
@@ -457,13 +461,21 @@ Panel {
     deleteProc.running = true
   }
 
-  // ---- Task list.
+  // ---- Task list. Every mutating action (add/complete/edit/delete/view
+  //      switch) and both poll timers funnel through this one function, so
+  //      "avoid duplicate requests" only has to be solved once: if a fetch
+  //      is already in flight, don't start a second curl process — just
+  //      remember that a fresh one is wanted and let listProc's own exit
+  //      handler fire it once the in-flight one finishes. That's how an
+  //      "immediate" refresh stays immediate without ever running two list
+  //      fetches at the same time.
   function refresh() {
     if (root.apiToken === "") {
       root.settingsView = true
       return
     }
-    if (listProc.running) return
+    if (listProc.running) { root.refreshPending = true; return }
+    root.refreshPending = false
     root.loading = true
     root.errorText = ""
 
@@ -480,6 +492,12 @@ Panel {
     listProc.command = ["curl", "-fsS", "--max-time", "10",
       "-H", "Authorization: Bearer " + root.apiToken, url]
     listProc.running = true
+    // A fetch just actually started — push both poll timers' next tick out
+    // from here rather than from whenever the panel happened to open, so a
+    // background/interval tick can't land moments after a refresh some
+    // other action already triggered.
+    openRefreshTimer.restart()
+    backgroundRefreshTimer.restart()
   }
 
   // ---- Quick add. Uses Todoist's own Quick Add parser (/tasks/quick) so
@@ -504,8 +522,7 @@ Panel {
   // ---- Complete task. Marked "completing" (struck through, dimmed) right
   //      away for feedback, then actually removed from the list a moment
   //      later — the API call itself fires immediately, only the row's
-  //      disappearance is delayed. A failed close re-fetches rather than
-  //      trying to reinsert it at the right sorted position by hand.
+  //      disappearance is delayed.
   function requestComplete(taskId) {
     if (taskId === "" || root.completingTaskIds.indexOf(taskId) !== -1) return
     root.completingTaskIds = root.completingTaskIds.concat([taskId])
@@ -515,16 +532,32 @@ Panel {
     completionRemovalTimer.restart()
   }
 
+  // Undoes the optimistic "completing" state for one task without touching
+  // any other task mid-completion — used when the close call itself fails,
+  // so a failed complete doesn't still get silently removed 700ms later by
+  // flushCompletedRemovals()'s own blind removal-by-id.
+  function undoCompleting(taskId) {
+    root.completingTaskIds = root.completingTaskIds.filter(function(id) { return id !== taskId })
+    root.pendingRemovalIds = root.pendingRemovalIds.filter(function(id) { return id !== taskId })
+  }
+
   function flushCompletedRemovals() {
     var ids = root.pendingRemovalIds
     root.pendingRemovalIds = []
     root.tasks = root.tasks.filter(function(t) { return !t || ids.indexOf(t.id) === -1 })
     root.completingTaskIds = root.completingTaskIds.filter(function(id) { return ids.indexOf(id) === -1 })
+    // Refresh now, once the strike-through/dim animation has actually
+    // settled — not from actionProc's own success handler directly, which
+    // could arrive before the 700ms delay above and have this task's row
+    // vanish outright (a full list replacement) instead of visibly
+    // completing first.
+    root.refresh()
   }
 
   function processActionQueue() {
     if (actionProc.running || root.actionQueue.length === 0) return
     var taskId = root.actionQueue.shift()
+    actionProc.pendingTaskId = taskId
     actionProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
       "-H", "Authorization: Bearer " + root.apiToken,
       root.apiBase + "/tasks/" + encodeURIComponent(taskId) + "/close"]
@@ -663,6 +696,7 @@ Panel {
     onExited: function(exitCode) {
       root.loading = false
       if (exitCode !== 0) root.errorText = Model.errorMessageForExit(exitCode, listErr.text)
+      if (root.refreshPending) Qt.callLater(root.refresh)
     }
   }
 
@@ -686,6 +720,10 @@ Panel {
 
   Process {
     id: actionProc
+    // Which task this run is closing — lets the failure path undo the
+    // optimistic strike-through for exactly that task, not whichever one
+    // happens to be at the front of a since-mutated queue/list.
+    property string pendingTaskId: ""
     stderr: StdioCollector {
       id: actionErr
       waitForEnd: true
@@ -693,8 +731,14 @@ Panel {
     onExited: function(exitCode) {
       if (exitCode !== 0) {
         root.errorText = Model.errorMessageForExit(exitCode, actionErr.text)
+        // The close didn't actually happen — don't let it still get
+        // removed 700ms later as if it had. Refresh right away too, since
+        // there's no completion animation to protect on a failure.
+        root.undoCompleting(actionProc.pendingTaskId)
         root.refresh()
       }
+      // On success, flushCompletedRemovals() (fired by the existing 700ms
+      // timer) is what triggers the refresh — see its own comment for why.
       Qt.callLater(root.processActionQueue)
     }
   }
@@ -706,10 +750,12 @@ Panel {
       waitForEnd: true
     }
     onExited: function(exitCode) {
-      if (exitCode !== 0) {
-        root.errorText = Model.errorMessageForExit(exitCode, deleteErr.text)
-        root.refresh()
-      }
+      if (exitCode !== 0) root.errorText = Model.errorMessageForExit(exitCode, deleteErr.text)
+      // Delete's optimistic removal is immediate and permanent (no delayed
+      // animation like complete has), so refreshing right away either way
+      // is safe — reconciles a failed delete's local removal on failure,
+      // confirms server-truth on success.
+      root.refresh()
     }
   }
 
@@ -720,10 +766,8 @@ Panel {
       waitForEnd: true
     }
     onExited: function(exitCode) {
-      if (exitCode !== 0) {
-        root.errorText = Model.errorMessageForExit(exitCode, editErr.text)
-        root.refresh()
-      }
+      if (exitCode !== 0) root.errorText = Model.errorMessageForExit(exitCode, editErr.text)
+      root.refresh()
     }
   }
 
@@ -770,17 +814,28 @@ Panel {
     onLoadFailed: root.loadSettingsFromText("")
   }
 
-  // Background poll so the bar's count stays fresh even while the panel is
-  // closed; a tighter interval only while it's open.
+  // Two polling timers, mutually exclusive by `root.opened` so they never
+  // both drive a refresh at once (they used to overlap: the 15-minute one
+  // ran unconditionally, the 5-minute one only gated on `opened` — meaning
+  // while the panel was open, both were live and could each independently
+  // trigger a fetch). Background poll keeps the bar's count fresh — and
+  // fresh only, no urgency — while the panel's closed and nobody's looking
+  // at the list; open poll is the only one that matters while someone
+  // actually has the panel up, so it's the only one that gets tightened.
+  // Neither is "aggressive" — every actual refresh (add/complete/edit/
+  // delete/view-switch) already happens immediately via refresh() itself;
+  // these two only cover the gaps between user actions.
   Timer {
-    interval: 15 * 60 * 1000
-    running: root.apiToken !== ""
+    id: backgroundRefreshTimer
+    interval: 20 * 60 * 1000
+    running: !root.opened && root.apiToken !== ""
     repeat: true
     onTriggered: root.refresh()
   }
 
   Timer {
-    interval: 5 * 60 * 1000
+    id: openRefreshTimer
+    interval: 2 * 60 * 1000
     running: root.opened && root.apiToken !== ""
     repeat: true
     onTriggered: root.refresh()
