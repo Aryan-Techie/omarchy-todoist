@@ -239,7 +239,35 @@ launch-readiness.
   labeled width block and a labeled height block, each with its own `−`/`+`
   steppers.
 
-## v1.11 — projects & richer task views (next)
+## v1.11 — Overdue/Today split, native-widget prep — shipped
+
+- Task-list empty state now reads differently per active view ("Inbox is
+  empty.", "No tasks yet.", "No tasks match this filter.") instead of the
+  same "Nothing due. You're clear." on every tab, which only made sense for
+  Today.
+- The Today view's combined `today | overdue` list is now visually split
+  into two row-anchored sections, **OVERDUE · N** and **TODAY · N**, each
+  with its own separator — same "header attached to the first row of its
+  group" pattern the built-in bluetooth panel uses for Paired/Available
+  devices. No change to the underlying filter query or sort order: `root
+  .tasks` was already sorted due-date-ascending, so overdue and today tasks
+  were already contiguous — the split only adds section headers at the
+  group boundary, still by due date/time, then priority, then existing
+  ordering. Inbox/All/Custom Filter are unaffected and keep their single
+  generic header.
+- Repo inspected end-to-end (QML architecture, API layer, keyboard handling,
+  settings, styling, scripts) ahead of a larger feature batch. Decided
+  **against** splitting `Panel.qml` into multiple component files — checked
+  the built-in shell first and found bluetooth (1039 lines) and audio (1237
+  lines) both stay single-file with inline `component` blocks even past our
+  size, so that's the actual convention, not a size-driven split. Also
+  investigated the Settings gear icon's Nerd Font dependency (`Style
+  .fontFamily` is a user-repointable `monospace` alias, not guaranteed
+  Nerd-Font-patched) — no runtime glyph-fallback is buildable in QML without
+  C++, and nothing in the built-in shell does this either, so the risk is
+  accepted and documented (checklist.md) rather than engineered around.
+
+## v1.12 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -248,7 +276,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.12 — more task actions
+## v1.13 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -258,7 +286,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.13 — comments & subtasks
+## v1.14 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.

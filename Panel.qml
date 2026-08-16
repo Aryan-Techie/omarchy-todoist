@@ -121,6 +121,28 @@ Panel {
     : root.quickView === "custom" ? "No tasks match this filter."
     : "Nothing due. You're clear."
 
+  // ---- Overdue/Today split (Today view only). root.tasks is already
+  //      sorted by due date ascending (Model.sortedTasks), so every overdue
+  //      task (due date < today) sorts before every task actually due
+  //      today — the two groups are already contiguous, no re-sort needed,
+  //      just a row-anchored header wherever the group changes. Same
+  //      "header attached to the first row of its group" pattern the
+  //      built-in bluetooth panel uses for its Paired/Available sections.
+  readonly property int overdueCount: {
+    if (root.quickView !== "today") return 0
+    var n = 0
+    for (var i = 0; i < root.tasks.length; i++) if (Model.taskIsOverdue(root.tasks[i])) n++
+    return n
+  }
+  readonly property int todayDueCount: root.quickView === "today" ? (root.tasks.length - root.overdueCount) : 0
+
+  function taskSectionTitle(index) {
+    if (root.quickView !== "today" || index < 0 || index >= root.tasks.length) return ""
+    var isOverdue = Model.taskIsOverdue(root.tasks[index])
+    if (index > 0 && Model.taskIsOverdue(root.tasks[index - 1]) === isOverdue) return ""
+    return isOverdue ? ("OVERDUE · " + root.overdueCount) : ("TODAY · " + root.todayDueCount)
+  }
+
   readonly property string headerSubtitle: {
     if (root.apiToken === "") return "NOT CONNECTED"
     if (root.settingsView) return "SETTINGS"
@@ -1534,7 +1556,9 @@ Panel {
             }
 
             PanelSectionHeader {
-              visible: root.apiToken !== ""
+              // The Today view splits into its own OVERDUE/TODAY row-anchored
+              // headers below instead of one generic label up here.
+              visible: root.apiToken !== "" && root.quickView !== "today"
               height: visible ? implicitHeight : 0
               text: root.quickViewLabel
               foreground: root.contentForeground
@@ -1552,14 +1576,41 @@ Panel {
               model: root.tasks
               currentIndex: root.selectedTaskIndex
 
-              delegate: TaskRow {
-                id: delegateRow
+              delegate: Item {
+                id: delegateItem
                 required property var modelData
                 required property int index
+                readonly property string sectionTitle: root.taskSectionTitle(index)
                 width: taskListView.width
-                task: modelData
-                rowIndex: index
-                hasCursor: root.taskCursorActive && index === root.selectedTaskIndex
+                height: delegateColumn.implicitHeight
+
+                Column {
+                  id: delegateColumn
+                  width: parent.width
+                  spacing: Style.spacing.sm
+
+                  PanelSeparator {
+                    visible: delegateItem.index > 0 && delegateItem.sectionTitle !== ""
+                    height: visible ? implicitHeight : 0
+                    foreground: root.contentForeground
+                  }
+
+                  PanelSectionHeader {
+                    visible: delegateItem.sectionTitle !== ""
+                    height: visible ? implicitHeight : 0
+                    text: delegateItem.sectionTitle
+                    foreground: root.contentForeground
+                    fontFamily: root.contentFontFamily
+                  }
+
+                  TaskRow {
+                    id: delegateRow
+                    width: parent.width
+                    task: delegateItem.modelData
+                    rowIndex: delegateItem.index
+                    hasCursor: root.taskCursorActive && delegateItem.index === root.selectedTaskIndex
+                  }
+                }
               }
             }
 

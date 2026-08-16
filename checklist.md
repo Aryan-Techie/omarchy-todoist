@@ -148,6 +148,15 @@ Tracks what's done and what's left before submitting to
 - [ ] Find (or set, via `p1`/`p2`/`p3` in quick-add) tasks at each priority
       level, confirm they render red/yellow/blue respectively and a
       no-priority task stays the normal text color
+- [ ] **v1.11**: On the Today view with at least one overdue task and one
+      due-today task, confirm two separate headers render (**OVERDUE · N**
+      and **TODAY · N**, each with its own separator above it) with correct
+      counts, and each task lands under the right one. With only one group
+      present (all overdue, or none overdue), confirm only that group's
+      header shows — no empty "OVERDUE · 0"/"TODAY · 0" block. Confirm
+      Inbox/All/Custom Filter are unchanged (single generic header, no
+      split). Confirm arrow-key/`j`/`k` cursor movement and Enter/Space/`e`/
+      `x` on a task still work correctly across the section boundary.
 - [x] Position-shift issue (Today ↔ Inbox/All, panel left open) — user
       confirmed v1.9.1's fix resolved it.
 - [ ] **User to re-test**: confirm the quick-add field and the

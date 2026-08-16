@@ -12,7 +12,9 @@ ones — all without leaving the keyboard.
 - Bar pill shows a checkmark plus your due/overdue task count (just a
   checkmark when the list is clear).
 - Panel lists matching tasks, sorted by due date then priority, color-coded
-  by Todoist priority (**p1 red, p2 yellow, p3 blue, p4 normal**).
+  by Todoist priority (**p1 red, p2 yellow, p3 blue, p4 normal**). The Today
+  view splits into **Overdue** and **Today** sections so you can tell at a
+  glance what's actually late.
 - Click the circle next to a task to mark it complete (updates instantly,
   syncs to Todoist in the background).
 - Quick-add box uses Todoist's own Quick Add parser — `p1`–`p4` priority,
