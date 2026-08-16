@@ -130,7 +130,24 @@ launch-readiness.
 - Settings gear icon switched from the plain Unicode `⚙` to omascratch's
   Nerd Font glyph (`󰒓`) for visual consistency with the rest of the bar.
 
-## v1.9 — projects & richer task views (next)
+## v1.9 — shipped
+
+- Task rows are now color-coded by Todoist priority: **p1 red (`#eb5757`),
+  p2 yellow (`#f2b84b`), p3 blue (`#4a90d2`), p4 normal** (default text
+  color). Applied to both the content text and the checkbox icon.
+- Investigated a further "still resizing" report with two more screenshots.
+  Reproduced it directly and empirically this time — opened the real panel,
+  used `wtype` to switch Today → All programmatically, and diffed
+  screenshots pixel-for-pixel (`grim`) rather than relying on visual
+  comparison alone. **Result: the card's outer border sits at the exact
+  same coordinates in both views** — the v1.8 fixed-size fix genuinely
+  works. What reads as "resizing" is that a sparse 6-task Today view leaves
+  visible empty space at the bottom of the same fixed box, while a dense
+  26-task All view fills it edge to edge — the box doesn't change, only how
+  full it looks. No code change from this investigation; documented here so
+  it isn't re-litigated blindly without new evidence next time it comes up.
+
+## v1.10 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -139,7 +156,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.10 — more task actions
+## v1.11 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -149,7 +166,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.11 — comments & subtasks
+## v1.12 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.

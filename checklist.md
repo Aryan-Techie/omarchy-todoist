@@ -125,10 +125,14 @@ Tracks what's done and what's left before submitting to
       like it's working"
 - [ ] Type a filter in Settings → Default filter and click **Apply** (not
       just pressing Enter), confirm it switches the task list to that filter
-- [ ] Switch between Today/Inbox/All and Settings repeatedly, confirm the
+- [x] Switch between Today/Inbox/All and Settings repeatedly, confirm the
       popup window itself never visibly resizes — only its scrollable
-      content changes (this was the actual "overflowing" complaint; the fix
-      was making the window size fixed instead of content-driven)
+      content changes. Verified directly with `grim` screenshots + `wtype`
+      to switch views programmatically: the card's border sits at identical
+      pixel coordinates in both a sparse (6-task) and dense (26-task) view.
+      What read as "resizing" was the dense view filling the same fixed box
+      edge to edge versus visible empty space in the sparse one — not an
+      actual dimension change.
 - [ ] Settings → Advanced: click `W +`/`W −` and `H +`/`H −` a few times,
       confirm the popup visibly resizes immediately and the new size sticks
       after closing/reopening the panel (persisted to settings.json)
@@ -136,6 +140,9 @@ Tracks what's done and what's left before submitting to
       not a missing-character box — if it renders as a box, the active font
       doesn't have this Nerd Font codepoint and the icon should revert to
       plain `⚙`
+- [ ] Find (or set, via `p1`/`p2`/`p3` in quick-add) tasks at each priority
+      level, confirm they render red/yellow/blue respectively and a
+      no-priority task stays the normal text color
 
 ## Known, accepted issues
 

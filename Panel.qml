@@ -684,7 +684,17 @@ Panel {
     readonly property string dueLabel: Model.taskDueLabel(task)
     readonly property bool completing: task ? root.completingTaskIds.indexOf(task.id) !== -1 : false
     readonly property bool editing: root.editingTaskIndex === rowIndex
-    readonly property color textColor: (task && task.priority === 4) ? Color.urgent : root.contentForeground
+    // Todoist priority colors (API priority 4 = p1, the most urgent, down
+    // to 1 = p4/no priority). Fixed, theme-independent hex — these carry a
+    // specific meaning ("this is p1") the same way in every theme, unlike
+    // an accent color that's meant to shift with the user's theme.
+    readonly property color textColor: {
+      if (!task) return root.contentForeground
+      if (task.priority === 4) return "#eb5757"
+      if (task.priority === 3) return "#f2b84b"
+      if (task.priority === 2) return "#4a90d2"
+      return root.contentForeground
+    }
 
     // editField.text isn't kept bound to root.editDraft once the user has
     // typed in it once (assigning to a QML property severs a declarative
