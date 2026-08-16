@@ -21,11 +21,15 @@ Panel {
 
   readonly property string apiBase: "https://api.todoist.com/api/v1"
   readonly property string homeDir: Quickshell.env("HOME")
+  readonly property string pluginDir: homeDir + "/.config/omarchy/plugins/io.github.aryan-techie.todoist"
   readonly property string stateDir: homeDir + "/.local/state/omarchy/io.github.aryan-techie.todoist"
   readonly property string settingsPath: stateDir + "/settings.json"
 
   property string apiToken: ""
   property string filterQuery: "today | overdue"
+  // "today" | "inbox" | "all" | "custom" — the three tabs plus whatever the
+  // free-form filter field in Settings last applied.
+  property string quickView: "today"
   property bool settingsLoaded: false
   property bool settingsView: true
 
@@ -39,6 +43,15 @@ Panel {
   property string quickAddText: ""
   property bool quickAddSubmitting: false
   property var actionQueue: []
+
+  // ---- Keyboard shortcut (Settings → Keyboard shortcut). Empty means no
+  //      shortcut has been wired into ~/.config/hypr/bindings.lua yet.
+  property string keybindCombo: ""
+  property bool recordingKeybind: false
+  property string pendingKeybindCombo: ""
+  property string keybindRecordError: ""
+  property string keybindApplyStatus: ""
+  property string keybindApplyError: ""
 
   readonly property color contentForeground: bar ? bar.foreground : Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
@@ -82,13 +95,21 @@ Panel {
     try { parsed = JSON.parse(text || "{}") } catch (e) { parsed = {} }
     if (typeof parsed.apiToken === "string") root.apiToken = parsed.apiToken
     if (typeof parsed.filter === "string") root.filterQuery = Model.sanitizeFilter(parsed.filter)
+    if (typeof parsed.quickView === "string" && ["today", "inbox", "all", "custom"].indexOf(parsed.quickView) !== -1)
+      root.quickView = parsed.quickView
+    if (typeof parsed.keybind === "string") root.keybindCombo = parsed.keybind
     root.settingsLoaded = true
     root.settingsView = root.apiToken === ""
     if (root.apiToken !== "") refresh()
   }
 
   function persistSettings() {
-    settingsFile.setText(JSON.stringify({ apiToken: root.apiToken, filter: root.filterQuery }, null, 2) + "\n")
+    settingsFile.setText(JSON.stringify({
+      apiToken: root.apiToken,
+      filter: root.filterQuery,
+      quickView: root.quickView,
+      keybind: root.keybindCombo
+    }, null, 2) + "\n")
     // The token is a secret; keep the file readable only by the user. A
     // short defer gives the atomic write below somewhere to land first.
     Qt.callLater(function() { chmodProc.running = true })
@@ -117,8 +138,19 @@ Panel {
   function applyFilter(value) {
     var next = Model.sanitizeFilter(value)
     filterField.text = next
-    if (next === root.filterQuery) return
+    root.quickView = "custom"
+    if (next === root.filterQuery) { persistSettings(); refresh(); return }
     root.filterQuery = next
+    persistSettings()
+    refresh()
+  }
+
+  // ---- Quick views. "today"/"inbox" hit /tasks/filter with a canned query;
+  //      "all" hits plain /tasks (no filter = every active task); "custom"
+  //      reuses whatever filter the Settings field last applied.
+  function selectQuickView(view) {
+    if (view === root.quickView) return
+    root.quickView = view
     persistSettings()
     refresh()
   }
@@ -132,9 +164,19 @@ Panel {
     if (listProc.running) return
     root.loading = true
     root.errorText = ""
+
+    var url
+    if (root.quickView === "all") {
+      url = root.apiBase + "/tasks"
+    } else {
+      var query = root.quickView === "inbox" ? "#Inbox"
+        : root.quickView === "custom" ? root.filterQuery
+        : "today | overdue"
+      url = root.apiBase + "/tasks/filter?query=" + encodeURIComponent(query) + "&lang=en"
+    }
+
     listProc.command = ["curl", "-fsS", "--max-time", "10",
-      "-H", "Authorization: Bearer " + root.apiToken,
-      root.apiBase + "/tasks/filter?query=" + encodeURIComponent(root.filterQuery) + "&lang=en"]
+      "-H", "Authorization: Bearer " + root.apiToken, url]
     listProc.running = true
   }
 
@@ -168,6 +210,95 @@ Panel {
       "-H", "Authorization: Bearer " + root.apiToken,
       root.apiBase + "/tasks/" + encodeURIComponent(taskId) + "/close"]
     actionProc.running = true
+  }
+
+  // ---- Keyboard shortcut recording. Mirrors a stripped-down Hyprland key
+  //      combo into "MOD + MOD + KEY" form; set-keybind.sh does the actual
+  //      ~/.config/hypr/bindings.lua edit (backup + reload + auto-rollback).
+  function isBareModifier(key) {
+    return key === Qt.Key_Super_L || key === Qt.Key_Super_R || key === Qt.Key_Meta
+      || key === Qt.Key_Control || key === Qt.Key_Shift || key === Qt.Key_Alt || key === Qt.Key_AltGr
+  }
+
+  function hyprKeyName(key) {
+    if (key >= Qt.Key_A && key <= Qt.Key_Z) return String.fromCharCode(key)
+    if (key >= Qt.Key_0 && key <= Qt.Key_9) return String.fromCharCode(key)
+    if (key >= Qt.Key_F1 && key <= Qt.Key_F12) return "F" + (key - Qt.Key_F1 + 1)
+    var names = {}
+    names[Qt.Key_Space] = "SPACE"
+    names[Qt.Key_Return] = "RETURN"
+    names[Qt.Key_Enter] = "RETURN"
+    names[Qt.Key_Tab] = "TAB"
+    names[Qt.Key_Backspace] = "BACKSPACE"
+    names[Qt.Key_Comma] = "comma"
+    names[Qt.Key_Period] = "period"
+    names[Qt.Key_Minus] = "minus"
+    names[Qt.Key_Equal] = "equal"
+    names[Qt.Key_Slash] = "slash"
+    return names[key] || ""
+  }
+
+  function startRecordingKeybind() {
+    root.recordingKeybind = true
+    root.pendingKeybindCombo = ""
+    root.keybindRecordError = ""
+    root.keybindApplyStatus = ""
+  }
+
+  function cancelRecordingKeybind() {
+    root.recordingKeybind = false
+    root.pendingKeybindCombo = ""
+    root.keybindRecordError = ""
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+  }
+
+  function handleKeybindRecordKey(event) {
+    if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
+      root.cancelRecordingKeybind()
+      event.accepted = true
+      return
+    }
+    if (root.isBareModifier(event.key)) { event.accepted = true; return }
+
+    var mods = []
+    if (event.modifiers & Qt.MetaModifier) mods.push("SUPER")
+    if (event.modifiers & Qt.ControlModifier) mods.push("CTRL")
+    if (event.modifiers & Qt.AltModifier) mods.push("ALT")
+    if (event.modifiers & Qt.ShiftModifier) mods.push("SHIFT")
+
+    var keyStr = root.hyprKeyName(event.key)
+    if (keyStr === "") {
+      root.keybindRecordError = "Unsupported key — try a letter, digit, F-key, or punctuation key."
+      event.accepted = true
+      return
+    }
+    if (mods.length === 0) {
+      root.keybindRecordError = "Add a modifier (Super/Ctrl/Alt/Shift) — a bare key would break typing everywhere."
+      event.accepted = true
+      return
+    }
+
+    root.keybindRecordError = ""
+    root.pendingKeybindCombo = mods.join(" + ") + " + " + keyStr
+    event.accepted = true
+  }
+
+  function applyKeybindCombo(combo) {
+    if (combo === "" || root.keybindApplyStatus === "applying") return
+    root.keybindApplyStatus = "applying"
+    root.keybindApplyError = ""
+    keybindProc.pendingApply = combo
+    keybindProc.command = ["bash", root.pluginDir + "/set-keybind.sh", combo]
+    keybindProc.running = true
+  }
+
+  function removeKeybindCombo() {
+    if (root.keybindCombo === "" || root.keybindApplyStatus === "applying") return
+    root.keybindApplyStatus = "applying"
+    root.keybindApplyError = ""
+    keybindProc.pendingApply = ""
+    keybindProc.command = ["bash", root.pluginDir + "/set-keybind.sh", "__REMOVE__"]
+    keybindProc.running = true
   }
 
   Component.onCompleted: {
@@ -246,6 +377,28 @@ Panel {
         root.refresh()
       }
       Qt.callLater(root.processActionQueue)
+    }
+  }
+
+  Process {
+    id: keybindProc
+    property string pendingApply: ""
+    stderr: StdioCollector {
+      id: keybindErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      if (exitCode === 0) {
+        root.keybindCombo = keybindProc.pendingApply
+        root.keybindApplyStatus = ""
+        root.keybindApplyError = ""
+        root.recordingKeybind = false
+        root.pendingKeybindCombo = ""
+        persistSettings()
+      } else {
+        root.keybindApplyStatus = "error"
+        root.keybindApplyError = (keybindErr.text || "").trim() || "Failed to apply keybind."
+      }
     }
   }
 
@@ -343,7 +496,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus
+      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -362,14 +515,19 @@ Panel {
           spacing: Style.spacing.lg
 
           // ---- Header ---------------------------------------------------
+          // Height comes from titleText alone (not a Math.max of both
+          // children) and actionsRow centers on that sibling directly,
+          // rather than on the parent's own height — sizing a parent from a
+          // child while anchoring that child back to the parent's center is
+          // a classic Qt Quick binding-loop trap.
           Item {
             width: parent.width
-            height: Math.max(titleText.implicitHeight, actionsRow.implicitHeight)
+            height: titleText.implicitHeight
 
             Text {
               id: titleText
               anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
+              anchors.top: parent.top
               text: "Todoist"
               font.bold: true
               font.family: root.contentFontFamily
@@ -380,7 +538,7 @@ Panel {
             Row {
               id: actionsRow
               anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+              anchors.verticalCenter: titleText.verticalCenter
               spacing: Style.spacing.sm
 
               PanelActionButton {
@@ -462,6 +620,129 @@ Panel {
                 onClicked: root.clearToken()
               }
             }
+
+            PanelSeparator {
+              foreground: root.contentForeground
+            }
+
+            Column {
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              Text {
+                text: "Keyboard shortcut"
+                font.bold: true
+                color: root.contentForeground
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Text {
+                width: parent.width
+                text: root.keybindCombo !== "" ? ("Current: " + root.keybindCombo) : "No shortcut set."
+                color: Qt.darker(root.contentForeground, 1.3)
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Row {
+                visible: !root.recordingKeybind
+                spacing: Style.spacing.sm
+
+                Button {
+                  text: "Ctrl+Super+Y"
+                  selected: root.keybindCombo === "CTRL + SUPER + Y"
+                  enabled: root.keybindApplyStatus !== "applying" && root.keybindCombo !== "CTRL + SUPER + Y"
+                  onClicked: root.applyKeybindCombo("CTRL + SUPER + Y")
+                }
+
+                Button {
+                  text: "Record custom…"
+                  enabled: root.keybindApplyStatus !== "applying"
+                  onClicked: root.startRecordingKeybind()
+                }
+
+                Button {
+                  text: "Remove"
+                  visible: root.keybindCombo !== ""
+                  enabled: root.keybindApplyStatus !== "applying"
+                  onClicked: root.removeKeybindCombo()
+                }
+              }
+
+              Column {
+                visible: root.recordingKeybind
+                width: parent.width
+                spacing: Style.spacing.xs
+
+                Rectangle {
+                  width: parent.width
+                  height: Style.spacing.controlHeight + Style.spacing.sm * 2
+                  radius: Style.cornerRadius
+                  color: Style.hoverFillFor(root.contentForeground, Color.accent)
+                  border.width: 1
+                  border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.4)
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: root.pendingKeybindCombo !== "" ? root.pendingKeybindCombo : "Press a shortcut…"
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.body
+                  }
+
+                  Item {
+                    id: keybindRecorder
+                    anchors.fill: parent
+                    focus: root.recordingKeybind
+                    Keys.onPressed: function(event) { root.handleKeybindRecordKey(event) }
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: root.keybindRecordError !== "" ? root.keybindRecordError : "Hold your modifiers and press a key. Esc cancels."
+                  color: root.keybindRecordError !== "" ? Color.urgent : Qt.darker(root.contentForeground, 1.4)
+                  wrapMode: Text.WordWrap
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.caption
+                }
+
+                Row {
+                  spacing: Style.spacing.sm
+
+                  Button {
+                    text: "Apply"
+                    enabled: root.pendingKeybindCombo !== "" && root.keybindApplyStatus !== "applying"
+                    onClicked: root.applyKeybindCombo(root.pendingKeybindCombo)
+                  }
+
+                  Button {
+                    text: "Cancel"
+                    onClicked: root.cancelRecordingKeybind()
+                  }
+                }
+              }
+
+              Text {
+                visible: root.keybindApplyStatus === "error"
+                width: parent.width
+                text: root.keybindApplyError
+                color: Color.urgent
+                wrapMode: Text.WordWrap
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Text {
+                width: parent.width
+                text: "Applies immediately by editing ~/.config/hypr/bindings.lua (backed up first) and reloading Hyprland. Any error rolls the change back automatically."
+                color: Qt.darker(root.contentForeground, 1.5)
+                wrapMode: Text.WordWrap
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.caption
+              }
+            }
           }
 
           // ---- Task list view ---------------------------------------------
@@ -493,6 +774,31 @@ Panel {
                 iconSpinning: root.quickAddSubmitting
                 enabled: root.apiToken !== "" && !root.quickAddSubmitting && root.quickAddText.trim() !== ""
                 onClicked: root.submitQuickAdd()
+              }
+            }
+
+            Row {
+              width: parent.width
+              visible: root.apiToken !== ""
+              height: visible ? implicitHeight : 0
+              spacing: Style.spacing.sm
+
+              Button {
+                text: "Today"
+                selected: root.quickView === "today"
+                onClicked: root.selectQuickView("today")
+              }
+
+              Button {
+                text: "Inbox"
+                selected: root.quickView === "inbox"
+                onClicked: root.selectQuickView("inbox")
+              }
+
+              Button {
+                text: "All"
+                selected: root.quickView === "all"
+                onClicked: root.selectQuickView("all")
               }
             }
 
