@@ -147,6 +147,34 @@ launch-readiness.
   full it looks. No code change from this investigation; documented here so
   it isn't re-litigated blindly without new evidence next time it comes up.
 
+## v1.9.1 — shipped
+
+- Found and fixed a real, plugin-owned contributor to the position-shift
+  reports: the bar pill's own width changes with the task count's
+  digit-length (`"✓ 7"` vs `"✓ 15"`), and since the popup is centered under
+  that pill (`x = anchorScreenPos.x + anchorW/2 - contentWidth/2` inside the
+  shared `Ui/KeyboardPanel.qml`), a wider/narrower pill shifts the popup's
+  center point even though the popup's own size never changes. Fixed by
+  giving the bar `WidgetButton` a `fixedWidth` sized (via `TextMetrics`) to
+  fit the widest realistic label (`"✓ 999"`), so the pill's width — and with
+  it the anchor point — never moves regardless of count.
+- Two more rounds of user-reported screenshots investigated with the same
+  `grim` + `wtype` pixel-diffing method as v1.9, this time specifically
+  reproducing Today↔Inbox switches with the panel left open the whole
+  time (matching the user's confirmed repro steps exactly) — still could
+  not reproduce the full magnitude of shift shown in their screenshots on
+  this build, before or after the pill-width fix above. The pill-width fix
+  is real and worth keeping regardless, but may not be the whole story;
+  flagged to the user to re-test and report whether it's fully resolved or
+  only partially.
+- Considered (but did not implement) freezing the popup's position entirely
+  by snapshotting it once on open, ignoring the shared `KeyboardPanel`'s
+  live anchor-tracking (`TransformWatcher`) after that. Not done because it
+  would require bypassing/reimplementing part of a shared system component
+  this plugin doesn't own — meaningfully more risk than the targeted
+  pill-width fix, and not yet justified without confirming it's still
+  needed after this fix lands.
+
 ## v1.10 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
