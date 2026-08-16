@@ -59,9 +59,11 @@ The panel drops right below its bar icon (not centered on the bar).
 - Click a task's circle to mark it complete.
 - Type in the box at the top of the list and press Enter (or click **Add**)
   to create a task — see Quick Add syntax above (`p1`, `#Project`, dates).
-- The ↻ icon refreshes the list; the ⚙ icon opens Settings, where you can
-  change the filter, set a keyboard shortcut, or remove your token.
-- Middle-click the bar icon to refresh without opening the panel.
+- The ⚙ icon (or `p`) opens Settings, organized into **Account**, **Default
+  filter**, **Keyboard shortcut**, and **General** sections — the last one
+  has explicit **Refresh now** and **Keyboard shortcuts** buttons.
+- Middle-click the bar icon to refresh without opening the panel, or press
+  `r` while the panel's open.
 
 ### Keyboard controls
 
@@ -80,7 +82,7 @@ The whole panel is operable without a mouse:
 | `x` | Delete the selected task (asks for confirmation first) |
 | `q` | Jump into the Add-a-task box |
 | `r` | Refresh |
-| `?` | Toggle a shortcuts cheat-sheet overlay (also the "?" button in the header) |
+| `?` | Toggle a shortcuts cheat-sheet overlay (also a button in Settings) |
 
 Completing a task strikes it through and dims it for a moment before it
 disappears from the list, so the click reads as "done" rather than "vanished."

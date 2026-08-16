@@ -93,6 +93,7 @@ Panel {
   readonly property string headerSubtitle: {
     if (root.apiToken === "") return "NOT CONNECTED"
     if (root.settingsView) return "SETTINGS"
+    if (root.loading && root.tasks.length === 0) return "LOADING…"
     return root.quickViewLabel + " · " + root.taskCount + (root.taskCount === 1 ? " TASK" : " TASKS")
   }
 
@@ -878,25 +879,10 @@ Panel {
               spacing: Style.spacing.sm
 
               PanelActionButton {
-                iconText: "↻"
-                tooltipText: "Refresh (r)"
-                foreground: root.contentForeground
-                enabled: root.apiToken !== ""
-                onClicked: root.refresh()
-              }
-
-              PanelActionButton {
                 iconText: root.settingsView ? "✕" : "⚙"
-                tooltipText: root.settingsView ? "Close settings (Esc)" : "Settings"
+                tooltipText: root.settingsView ? "Close settings (Esc)" : "Settings (p)"
                 foreground: root.contentForeground
                 onClicked: root.settingsView = !root.settingsView
-              }
-
-              PanelActionButton {
-                iconText: "?"
-                tooltipText: "Keyboard shortcuts (?)"
-                foreground: root.contentForeground
-                onClicked: root.helpOpen = !root.helpOpen
               }
             }
           }
@@ -912,6 +898,12 @@ Panel {
             visible: root.settingsView
             height: visible ? implicitHeight : 0
             spacing: Style.spacing.md
+
+            PanelSectionHeader {
+              text: "ACCOUNT"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
 
             Text {
               width: parent.width
@@ -930,22 +922,6 @@ Panel {
               text: root.tokenDraft
               onTextChanged: root.tokenDraft = text
               onAccepted: root.saveToken()
-            }
-
-            Text {
-              width: parent.width
-              text: "Filter — Todoist filter syntax (e.g. \"today | overdue\", \"#Work & !subtask\")"
-              wrapMode: Text.WordWrap
-              color: Qt.darker(root.contentForeground, 1.3)
-              font.family: root.contentFontFamily
-              font.pixelSize: Style.font.bodySmall
-            }
-
-            TextField {
-              id: filterField
-              width: parent.width
-              text: root.filterQuery
-              onAccepted: root.applyFilter(text)
             }
 
             Row {
@@ -968,16 +944,51 @@ Panel {
               foreground: root.contentForeground
             }
 
+            PanelSectionHeader {
+              text: "DEFAULT FILTER"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Text {
+              width: parent.width
+              text: "Todoist filter syntax (e.g. \"today | overdue\", \"#Work & !subtask\") — applied as the \"custom\" view."
+              wrapMode: Text.WordWrap
+              color: Qt.darker(root.contentForeground, 1.3)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              TextField {
+                id: filterField
+                width: parent.width - filterApplyButton.width - Style.spacing.sm
+                text: root.filterQuery
+                onAccepted: root.applyFilter(text)
+              }
+
+              Button {
+                id: filterApplyButton
+                text: "Apply"
+                onClicked: root.applyFilter(filterField.text)
+              }
+            }
+
+            PanelSeparator {
+              foreground: root.contentForeground
+            }
+
             Column {
               width: parent.width
               spacing: Style.spacing.sm
 
-              Text {
-                text: "Keyboard shortcut"
-                font.bold: true
-                color: root.contentForeground
-                font.family: root.contentFontFamily
-                font.pixelSize: Style.font.bodySmall
+              PanelSectionHeader {
+                text: "KEYBOARD SHORTCUT"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
               }
 
               Text {
@@ -1084,6 +1095,36 @@ Panel {
                 wrapMode: Text.WordWrap
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.caption
+              }
+            }
+
+            PanelSeparator {
+              foreground: root.contentForeground
+            }
+
+            Column {
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              PanelSectionHeader {
+                text: "GENERAL"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+              }
+
+              Row {
+                spacing: Style.spacing.sm
+
+                Button {
+                  text: root.loading ? "Refreshing…" : "Refresh now"
+                  enabled: root.apiToken !== "" && !root.loading
+                  onClicked: root.refresh()
+                }
+
+                Button {
+                  text: "Keyboard shortcuts"
+                  onClicked: root.helpOpen = true
+                }
               }
             }
           }
@@ -1260,59 +1301,73 @@ Panel {
           }
 
           BorderSurface {
+            id: helpCard
             anchors.centerIn: parent
-            width: Math.min(parent.width - Style.space(24), Style.space(300))
-            height: Math.min(parent.height - Style.space(24), helpColumn.implicitHeight + Style.space(40))
+            // Content insets (border + padding) aren't applied to children
+            // automatically — they're exposed as contentXInset properties
+            // that have to be applied by hand, same as Ui/ConfirmDialog.qml
+            // does. Skipping that the first time round is what pushed text
+            // right up against (and past) the border.
+            width: Math.min(parent.width - Style.space(24), Style.space(340))
+            height: Math.min(parent.height - Style.space(24),
+              helpCard.contentTopInset + helpCard.contentBottomInset + helpColumn.implicitHeight + Style.space(8))
             color: Color.popups.background
             borderSpec: Border.flat(Color.accent, Style.normalBorderWidth)
             radius: Style.cornerRadius
             padding: Style.space(16)
-            clip: true
 
             MouseArea {
               anchors.fill: parent
               onClicked: {}
             }
 
-            Flickable {
+            Item {
               anchors.fill: parent
-              contentWidth: width
-              contentHeight: helpColumn.implicitHeight
-              clip: true
-              boundsBehavior: Flickable.StopAtBounds
-              interactive: contentHeight > height
+              anchors.topMargin: helpCard.contentTopInset
+              anchors.rightMargin: helpCard.contentRightInset
+              anchors.bottomMargin: helpCard.contentBottomInset
+              anchors.leftMargin: helpCard.contentLeftInset
 
-              Column {
-                id: helpColumn
-                width: parent.width
-                spacing: Style.spacing.sm
+              Flickable {
+                anchors.fill: parent
+                contentWidth: width
+                contentHeight: helpColumn.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height
 
-                Text {
-                  text: "Keyboard shortcuts"
-                  font.bold: true
-                  color: root.contentForeground
-                  font.family: root.contentFontFamily
-                  font.pixelSize: Style.font.title
-                }
-
-                Text {
+                Column {
+                  id: helpColumn
                   width: parent.width
-                  wrapMode: Text.WordWrap
-                  color: root.contentForeground
-                  font.family: root.contentFontFamily
-                  font.pixelSize: Style.font.bodySmall
-                  text: "Tab / Shift+Tab — cycle Today → Inbox → All\n"
-                    + "t / i / a — jump to Today / Inbox / All\n"
-                    + "p — toggle Settings\n"
-                    + "↑/↓ or k/j — move task selection\n"
-                    + "Enter — open task on Todoist\n"
-                    + "Space — complete task\n"
-                    + "e — edit task title\n"
-                    + "x — delete task\n"
-                    + "q — focus Add-a-task\n"
-                    + "r — refresh\n"
-                    + "Escape — back / close\n"
-                    + "? — toggle this help"
+                  spacing: Style.spacing.sm
+
+                  Text {
+                    text: "Keyboard shortcuts"
+                    font.bold: true
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.title
+                  }
+
+                  Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    text: "Tab / Shift+Tab — cycle Today → Inbox → All\n"
+                      + "t / i / a — jump to Today / Inbox / All\n"
+                      + "p — toggle Settings\n"
+                      + "↑/↓ or k/j — move task selection\n"
+                      + "Enter — open task on Todoist\n"
+                      + "Space — complete task\n"
+                      + "e — edit task title\n"
+                      + "x — delete task\n"
+                      + "q — focus Add-a-task\n"
+                      + "r — refresh\n"
+                      + "Escape — back / close\n"
+                      + "? — toggle this help"
+                  }
                 }
               }
             }

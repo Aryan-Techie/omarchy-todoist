@@ -89,7 +89,32 @@ launch-readiness.
   being created — reported as feeling "weird." Replaced with a plain
   `Adding…` text label instead; no rotation anywhere in the plugin now.
 
-## v1.7 — projects & richer task views (next)
+## v1.7 — shipped
+
+- Fixed a real overflow bug in the `?` shortcuts overlay, also reported with
+  a screenshot: text ran right up against (and past) the card's border. Root
+  cause was `BorderSurface.padding` not automatically applying to children —
+  its inset has to be applied by hand via `contentTopInset`/etc., same as
+  `Ui/ConfirmDialog.qml` already does; the overlay just wasn't doing it.
+  Fixed by wrapping the content in an inset-margined `Item`, matching that
+  proven pattern, and widened the card slightly (300px → 340px) so the
+  longest shortcut line wraps comfortably instead of running edge to edge.
+- Removed the header's ↻ refresh and "?" help icons — reported as feeling
+  unresponsive/confusing sitting bare in the header with no feedback when
+  clicked. Refresh and the shortcuts overlay are both still fully available
+  (`r` / `?`, or now from Settings), just not as ambiguous bare icons up top.
+- Settings reorganized into clearly labeled sections (**Account**, **Default
+  filter**, **Keyboard shortcut**, **General**) using `PanelSectionHeader`,
+  matching the visual language used elsewhere in the panel. The new
+  **General** section has explicit **Refresh now** (shows "Refreshing…"
+  while in flight — real, undeniable feedback instead of a silent icon) and
+  **Keyboard shortcuts** buttons. The filter field also gained an explicit
+  **Apply** button next to it instead of Enter-only.
+- Header subtitle now shows "LOADING…" during the very first fetch on an
+  empty list (background refreshes of an already-populated list stay quiet,
+  matching the earlier overflow fix's reasoning).
+
+## v1.8 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -98,7 +123,7 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.8 — more task actions
+## v1.9 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
@@ -108,7 +133,7 @@ launch-readiness.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
 - Edit description, not just title.
 
-## v1.9 — comments & subtasks
+## v1.10 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.

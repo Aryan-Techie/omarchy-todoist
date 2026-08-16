@@ -105,9 +105,26 @@ Tracks what's done and what's left before submitting to
       card's rounded border regardless of scroll position
 - [ ] Press `Enter` on a task, confirm the browser opens AND the panel
       closes (not just the browser opening)
-- [ ] Press `?` (and click the new "?" header button), confirm the
-      shortcuts overlay opens/closes; confirm `Escape` and `?` both close it
-      without closing the whole panel
+- [ ] Press `?` (or **Keyboard shortcuts** in Settings → General), confirm
+      the shortcuts overlay opens/closes; confirm `Escape` and `?` both
+      close it without closing the whole panel
+- [x] Reproduced and fixed a second overflow bug (screenshot: the `?`
+      overlay itself) — text ran past the card's border because
+      `BorderSurface.padding` isn't auto-applied to children; fixed by
+      adding the missing content-inset margins (matching
+      `Ui/ConfirmDialog.qml`'s own working pattern) and widening the card.
+- [ ] Open the `?` overlay, confirm all 12 shortcut lines are fully inside
+      the bordered card with real padding on every side, none touching or
+      crossing the border
+- [ ] Confirm the header now shows only the ⚙ icon (↻ and "?" removed)
+- [ ] Open Settings, confirm four labeled sections (Account, Default
+      filter, Keyboard shortcut, General) render cleanly with no overlap
+- [ ] Click **Refresh now** in Settings → General, confirm it shows
+      "Refreshing…" and re-disables itself briefly, then goes back to
+      "Refresh now" — this was the concrete fix for "refresh doesn't feel
+      like it's working"
+- [ ] Type a filter in Settings → Default filter and click **Apply** (not
+      just pressing Enter), confirm it switches the task list to that filter
 
 ## Known, accepted issues
 
