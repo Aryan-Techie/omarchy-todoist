@@ -1246,6 +1246,7 @@ Panel {
 
             Row {
               width: parent.width
+              clip: true
               spacing: Style.spacing.sm
 
               TextField {
@@ -1277,6 +1278,7 @@ Panel {
               width: parent.width
               visible: root.apiToken !== ""
               height: visible ? implicitHeight : 0
+              clip: true
               spacing: 0
 
               Button {

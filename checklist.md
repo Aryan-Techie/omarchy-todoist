@@ -143,15 +143,14 @@ Tracks what's done and what's left before submitting to
 - [ ] Find (or set, via `p1`/`p2`/`p3` in quick-add) tasks at each priority
       level, confirm they render red/yellow/blue respectively and a
       no-priority task stays the normal text color
-- [ ] **User to re-test**: switch Today → Inbox (or any pair with a
-      digit-length change in the count, e.g. 7 → 15) with the panel left
-      open, confirm the popup no longer visibly shifts position. This was
-      reported 3 times with screenshots; a real contributing cause (bar
-      pill width changing with task count) was found and fixed in v1.9.1,
-      but repeated attempts to reproduce the full shift shown in the
-      screenshots directly (via `grim` + `wtype` on this same machine)
-      were unsuccessful — so this fix needs the user's own confirmation
-      that it's actually resolved, not just a code-level assumption.
+- [x] Position-shift issue (Today ↔ Inbox/All, panel left open) — user
+      confirmed v1.9.1's fix resolved it.
+- [ ] **User to re-test**: confirm the quick-add row and the Today/Inbox/All
+      tab row no longer show anything poking past the panel's left edge,
+      especially with whichever tab is currently selected. Fixed
+      defensively in v1.9.2 (`clip: true` on both rows) without being able
+      to reproduce the original overflow directly — same caveat as above,
+      needs the user's own confirmation.
 
 ## Known, accepted issues
 

@@ -175,6 +175,25 @@ launch-readiness.
   pill-width fix, and not yet justified without confirming it's still
   needed after this fix lands.
 
+## v1.9.2 — shipped
+
+- User confirmed v1.9.1's pill-width fix resolved the position-shift issue.
+- New report, with a screenshot: the quick-add row and the Today/Inbox/All
+  tab row appeared to overflow past the panel's left edge. Best working
+  theory (couldn't reproduce it directly in my own render, same as the
+  position-shift investigation): the selected tab's border, drawn by the
+  shared `Button` component, can render outside its own bounds depending on
+  the active theme's `[controls] selected-border-width` — on a theme with a
+  non-zero value this would poke the "Today" tab's highlight slightly past
+  the row's left edge, while my own test theme's value happens to be zero
+  (or otherwise not exhibit it). Added `clip: true` to both rows regardless
+  of exact mechanism, so nothing either row's children render can bleed
+  past their bounds — a defensive fix aimed at the *symptom* since the
+  precise *cause* couldn't be confirmed empirically this time. Verified no
+  regression (all three tabs, quick-add field, and Add button still render
+  and lay out correctly) but, like v1.9.1, flagged for the user to confirm
+  it actually addresses what they saw.
+
 ## v1.10 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
