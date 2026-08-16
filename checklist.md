@@ -26,8 +26,8 @@ Tracks what's done and what's left before submitting to
 - [x] Fixed a real binding-loop bug in the header layout caught by watching
       `qs log` during dev testing (Math.max-of-two-children's-implicitHeight
       + anchoring a child back to the parent's own computed height)
-- [ ] Complete a real task end-to-end (click the circle, confirm it
-      disappears from the list and completes in Todoist itself)
+- [ ] Complete a real task end-to-end (click the circle, confirm it strikes
+      through/dims briefly then disappears, and completes in Todoist itself)
 - [ ] Quick-add a real task end-to-end (confirm it shows up in Todoist)
 - [ ] Exercise all three quick-view tabs (Today, Inbox, All) with a real
       account that has tasks in more than one place
@@ -76,6 +76,17 @@ Tracks what's done and what's left before submitting to
 - [ ] Arrow to a task, press `x`, confirm the confirm dialog shows the right
       task title, **Escape**/click-Cancel backs out without deleting, and
       confirming actually deletes it in Todoist
+- [ ] Arrow to a task, press `Enter`, confirm it opens that exact task on
+      app.todoist.com in your browser (and does **not** also complete it)
+- [ ] Arrow to a task, press `Space`, confirm it completes (and does **not**
+      open a browser tab)
+- [ ] Arrow to a task, press `e`, edit the text, press `Enter`, confirm the
+      new title shows immediately and persists in Todoist after a refresh
+- [ ] Press `e` on a task, press `Escape` instead of `Enter`, confirm the
+      original title is unchanged
+- [ ] Complete two tasks in quick succession, confirm both eventually
+      disappear (the removal delay batches to the last click, which is fine)
+      and neither gets stuck showing struck-through forever
 
 ## Known, accepted issues
 

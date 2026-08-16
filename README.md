@@ -72,10 +72,15 @@ The whole panel is operable without a mouse:
 | `Escape` | Back out of Settings to the task list; press again to close the panel |
 | `Tab` / `Shift+Tab` | Cycle Today → Inbox → All (switches to the next bar panel instead, while Settings is open) |
 | `↑`/`↓` or `k`/`j` | Move the selection up/down the task list |
-| `Enter` or `Space` | Complete the selected task |
+| `Enter` | Open the selected task on the Todoist website |
+| `Space` | Complete the selected task |
+| `e` | Edit the selected task's title in place |
 | `x` | Delete the selected task (asks for confirmation first) |
 | `q` | Jump into the Add-a-task box |
 | `r` | Refresh |
+
+Completing a task strikes it through and dims it for a moment before it
+disappears from the list, so the click reads as "done" rather than "vanished."
 
 Typing in the token, filter, or quick-add fields (or recording a shortcut)
 temporarily suspends these so normal typing works. `x` for delete matches
@@ -101,12 +106,14 @@ every panel in the shell, not something specific to Todoist).
 
 ## External dependencies and system-level modifications
 
-This plugin runs `curl`, `mkdir`, `chmod`, `bash`, `awk`, `cp`, and (only for
-the optional keyboard shortcut) `hyprctl` via Quickshell's `Process` — all
-standard on any Omarchy install, no extra packages required. `curl` is the
-only thing that talks to the network; every request goes straight to
-`https://api.todoist.com/api/v1/` with your token in an `Authorization:
-Bearer` header. Nothing else is contacted, and nothing runs with elevated
+This plugin runs `curl`, `mkdir`, `chmod`, `bash`, `awk`, `cp`, `xdg-open`
+(only when you press Enter on a task, to open it in your browser), and
+(only for the optional keyboard shortcut) `hyprctl` via Quickshell's
+`Process` — all standard on any Omarchy install, no extra packages required.
+`curl` is the only thing that talks to the network; every request goes
+straight to `https://api.todoist.com/api/v1/` with your token in an
+`Authorization: Bearer` header. Nothing else is contacted, and nothing runs
+with elevated
 privileges.
 
 **The only system file this plugin can modify is
@@ -154,7 +161,9 @@ want your token gone too.
 Uses the [Todoist API v1](https://developer.todoist.com/api/v1/):
 `GET /tasks/filter` (or plain `GET /tasks` for the All view), `POST
 /tasks/quick` (Quick Add, natural-language parsing) for new tasks, `POST
-/tasks/{id}/close` to complete, `DELETE /tasks/{id}` to delete. The older
+/tasks/{id}` to edit a task's title, `POST /tasks/{id}/close` to complete,
+`DELETE /tasks/{id}` to delete. `Enter` opens
+`https://app.todoist.com/app/task/{id}` in your default browser. The older
 REST API v2 was retired by Todoist in February 2026, so this plugin only
 supports the current API.
 

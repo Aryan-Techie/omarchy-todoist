@@ -48,6 +48,21 @@ Panel {
   property string pendingDeleteTaskId: ""
   property string pendingDeleteTaskContent: ""
 
+  // Tasks mid-completion: closed on the server already, but kept in the
+  // list (struck through, dimmed) for a moment so the click reads as
+  // "done", not "vanished".
+  property var completingTaskIds: []
+  property var pendingRemovalIds: []
+
+  // Inline content editing. -1 = no row being edited.
+  property int editingTaskIndex: -1
+  property string editDraft: ""
+
+  // Enter fires both returnRequested (open in browser) and activateRequested
+  // (complete) back-to-back — this suppresses the completion half of that so
+  // Enter only opens the browser; Space still completes on its own.
+  property bool suppressNextActivate: false
+
   property bool loading: false
   property string errorText: ""
 
@@ -212,6 +227,55 @@ Panel {
     if (task) root.requestComplete(task.id)
   }
 
+  // ---- Open the selected task on the Todoist website (Enter).
+  function openSelectedTaskInBrowser() {
+    if (root.selectedTaskIndex < 0 || root.selectedTaskIndex >= root.tasks.length) return
+    var task = root.tasks[root.selectedTaskIndex]
+    if (!task || !task.id) return
+    openUrlProc.command = ["xdg-open", "https://app.todoist.com/app/task/" + encodeURIComponent(task.id)]
+    openUrlProc.running = true
+  }
+
+  // ---- Inline content edit (e).
+  function startEditSelectedTask() {
+    if (root.selectedTaskIndex < 0 || root.selectedTaskIndex >= root.tasks.length) return
+    var task = root.tasks[root.selectedTaskIndex]
+    if (!task || root.completingTaskIds.indexOf(task.id) !== -1) return
+    root.editDraft = task.content || ""
+    root.editingTaskIndex = root.selectedTaskIndex
+  }
+
+  function cancelEditTask() {
+    root.editingTaskIndex = -1
+    root.editDraft = ""
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+  }
+
+  function commitEditTask() {
+    var index = root.editingTaskIndex
+    root.editingTaskIndex = -1
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+    if (index < 0 || index >= root.tasks.length) { root.editDraft = ""; return }
+    var task = root.tasks[index]
+    var newContent = Model.safeTrim(root.editDraft)
+    root.editDraft = ""
+    if (!task || newContent === "" || newContent === task.content) return
+
+    var updated = {}
+    for (var key in task) updated[key] = task[key]
+    updated.content = newContent
+    var nextTasks = root.tasks.slice()
+    nextTasks[index] = updated
+    root.tasks = nextTasks
+
+    editProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
+      "-H", "Authorization: Bearer " + root.apiToken,
+      "-H", "Content-Type: application/json",
+      "-d", JSON.stringify({ content: newContent }),
+      root.apiBase + "/tasks/" + encodeURIComponent(task.id)]
+    editProc.running = true
+  }
+
   // ---- Delete (the selected task, via "x" or a task row's delete button).
   //      Confirmed first — unlike completing, this can't be undone from here.
   function requestDeleteSelected() {
@@ -291,13 +355,25 @@ Panel {
     createProc.running = true
   }
 
-  // ---- Complete task. Removes the row immediately (optimistic); a failed
-  //      close re-adds it by re-fetching rather than trying to reinsert it
-  //      at the right sorted position by hand.
+  // ---- Complete task. Marked "completing" (struck through, dimmed) right
+  //      away for feedback, then actually removed from the list a moment
+  //      later — the API call itself fires immediately, only the row's
+  //      disappearance is delayed. A failed close re-fetches rather than
+  //      trying to reinsert it at the right sorted position by hand.
   function requestComplete(taskId) {
+    if (taskId === "" || root.completingTaskIds.indexOf(taskId) !== -1) return
+    root.completingTaskIds = root.completingTaskIds.concat([taskId])
+    root.pendingRemovalIds.push(taskId)
     root.actionQueue.push(taskId)
-    root.tasks = root.tasks.filter(function(t) { return !t || t.id !== taskId })
     processActionQueue()
+    completionRemovalTimer.restart()
+  }
+
+  function flushCompletedRemovals() {
+    var ids = root.pendingRemovalIds
+    root.pendingRemovalIds = []
+    root.tasks = root.tasks.filter(function(t) { return !t || ids.indexOf(t.id) === -1 })
+    root.completingTaskIds = root.completingTaskIds.filter(function(id) { return ids.indexOf(id) === -1 })
   }
 
   function processActionQueue() {
@@ -492,6 +568,31 @@ Panel {
   }
 
   Process {
+    id: editProc
+    stderr: StdioCollector {
+      id: editErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.errorText = Model.errorMessageForExit(exitCode, editErr.text)
+        root.refresh()
+      }
+    }
+  }
+
+  Process {
+    id: openUrlProc
+  }
+
+  Timer {
+    id: completionRemovalTimer
+    interval: 700
+    repeat: false
+    onTriggered: root.flushCompletedRemovals()
+  }
+
+  Process {
     id: keybindProc
     property string pendingApply: ""
     stderr: StdioCollector {
@@ -543,11 +644,31 @@ Panel {
   component TaskRow: Item {
     id: row
     required property var task
+    // Not named "index" — a delegate instantiating this component also
+    // needs its own ListView-injected "required property int index", and
+    // QML won't let two same-named required properties coexist between a
+    // component and the instance declaring it (matches the built-in
+    // bluetooth panel's DeviceRow/rowIndex convention).
+    required property int rowIndex
     property bool hasCursor: false
 
     readonly property bool overdue: Model.taskIsOverdue(task)
     readonly property string dueLabel: Model.taskDueLabel(task)
+    readonly property bool completing: task ? root.completingTaskIds.indexOf(task.id) !== -1 : false
+    readonly property bool editing: root.editingTaskIndex === rowIndex
     readonly property color textColor: (task && task.priority === 4) ? Color.urgent : root.contentForeground
+
+    // editField.text isn't kept bound to root.editDraft once the user has
+    // typed in it once (assigning to a QML property severs a declarative
+    // binding on it) — re-sync explicitly whenever this row starts editing.
+    onEditingChanged: {
+      if (editing) {
+        editField.text = root.editDraft
+        Qt.callLater(function() {
+          if (row.editing) { editField.forceActiveFocus(); editField.selectAll() }
+        })
+      }
+    }
 
     height: Math.max(checkBtn.height, textColumn.implicitHeight) + Style.spacing.sm * 2
 
@@ -564,9 +685,10 @@ Panel {
       anchors.left: parent.left
       anchors.top: parent.top
       anchors.topMargin: Style.spacing.sm
-      iconText: "○"
-      tooltipText: "Mark complete"
+      iconText: row.completing ? "●" : "○"
+      tooltipText: "Mark complete (Space)"
       foreground: row.textColor
+      enabled: !row.completing
       onClicked: root.requestComplete(row.task ? row.task.id : "")
     }
 
@@ -580,16 +702,31 @@ Panel {
       spacing: 2
 
       Text {
+        visible: !row.editing
+        height: visible ? implicitHeight : 0
         width: parent.width
         text: row.task ? row.task.content : ""
+        opacity: row.completing ? 0.5 : 1.0
+        font.strikeout: row.completing
         color: row.textColor
         wrapMode: Text.WordWrap
         font.family: root.contentFontFamily
         font.pixelSize: Style.font.body
       }
 
+      TextField {
+        id: editField
+        visible: row.editing
+        height: visible ? implicitHeight : 0
+        width: parent.width
+        onTextChanged: if (row.editing) root.editDraft = text
+        onAccepted: root.commitEditTask()
+        Keys.onEscapePressed: root.cancelEditTask()
+      }
+
       Text {
-        visible: row.dueLabel !== ""
+        visible: row.dueLabel !== "" && !row.editing
+        height: visible ? implicitHeight : 0
         width: parent.width
         text: row.dueLabel
         color: row.overdue ? Color.urgent : Qt.darker(root.contentForeground, 1.5)
@@ -617,7 +754,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind || confirmDialog.opened
+      blocked: tokenField.activeFocus || filterField.activeFocus || quickAddField.activeFocus || root.recordingKeybind || confirmDialog.opened || root.editingTaskIndex !== -1
       // First Escape backs out of Settings to the task list; a second one
       // (now that settingsView is false) closes the panel.
       onCloseRequested: {
@@ -635,7 +772,18 @@ Panel {
         if (root.settingsView || dy === 0) return
         root.moveTaskCursor(dy)
       }
+      // Enter fires returnRequested then activateRequested, back to back,
+      // for the same keypress — returnRequested opens the task in the
+      // browser and flags suppressNextActivate so the activateRequested
+      // that immediately follows doesn't also complete it. Space fires only
+      // activateRequested, so it still completes on its own.
+      onReturnRequested: {
+        if (root.settingsView) return
+        root.suppressNextActivate = true
+        root.openSelectedTaskInBrowser()
+      }
       onActivateRequested: {
+        if (root.suppressNextActivate) { root.suppressNextActivate = false; return }
         if (!root.settingsView) root.activateSelectedTask()
       }
       // "x" is this shell's established delete shortcut (see
@@ -646,7 +794,9 @@ Panel {
       }
       onTextKey: function(t) {
         if (t === "r" || t === "R") { root.refresh(); return }
-        if ((t === "q" || t === "Q") && !root.settingsView) quickAddField.forceActiveFocus()
+        if (root.settingsView) return
+        if (t === "q" || t === "Q") { quickAddField.forceActiveFocus(); return }
+        if (t === "e" || t === "E") root.startEditSelectedTask()
       }
 
       Flickable {
@@ -1009,6 +1159,7 @@ Panel {
                 required property int index
                 width: taskListView.width
                 task: modelData
+                rowIndex: index
                 hasCursor: root.taskCursorActive && index === root.selectedTaskIndex
               }
             }

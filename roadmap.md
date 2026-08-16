@@ -43,7 +43,21 @@ launch-readiness.
 - `x` deletes the selected task via `DELETE /tasks/{id}`, with a confirm
   dialog (`Ui/ConfirmDialog`) first since delete isn't reversible from here.
 
-## v1.4 — projects & richer task views (next)
+## v1.4 — shipped
+
+- Completing a task now shows feedback instead of an instant vanish: the row
+  strikes through and dims immediately, then actually leaves the list ~700ms
+  later. The API close call itself still fires right away — only the row's
+  disappearance is delayed.
+- `Enter` opens the selected task on the Todoist website
+  (`https://app.todoist.com/app/task/{id}` via `xdg-open`); `Space` still
+  completes it. (PanelKeyCatcher fires both `returnRequested` and
+  `activateRequested` for the same Enter press — a `suppressNextActivate`
+  flag stops the completion half from also firing.)
+- `e` edits the selected task's title in place (`POST /tasks/{id}`),
+  `Enter` to save, `Escape` to cancel.
+
+## v1.5 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -52,17 +66,17 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.5 — task editing
+## v1.6 — more task actions
 
 - Change a task's due date from the row (quick "today" / "tomorrow" / pick a
   date) instead of only through Todoist itself.
 - Set/change priority from the row.
 - Reopen a just-completed task (undo) — Todoist's `/tasks/{id}/reopen`
   endpoint already supports this, just needs UI.
-- Edit task content inline.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
+- Edit description, not just title.
 
-## v1.6 — comments & subtasks
+## v1.7 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
