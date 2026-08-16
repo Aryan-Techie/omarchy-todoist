@@ -116,6 +116,11 @@ Panel {
     : root.quickView === "custom" ? "CUSTOM FILTER"
     : "TODAY & OVERDUE"
 
+  readonly property string emptyStateMessage: root.quickView === "inbox" ? "Inbox is empty."
+    : root.quickView === "all" ? "No tasks yet."
+    : root.quickView === "custom" ? "No tasks match this filter."
+    : "Nothing due. You're clear."
+
   readonly property string headerSubtitle: {
     if (root.apiToken === "") return "NOT CONNECTED"
     if (root.settingsView) return "SETTINGS"
@@ -1576,7 +1581,7 @@ Panel {
               visible: !root.loading && root.tasks.length === 0 && root.errorText === "" && root.apiToken !== ""
               height: visible ? implicitHeight : 0
               width: parent.width
-              text: "Nothing due. You're clear."
+              text: root.emptyStateMessage
               color: Qt.darker(root.contentForeground, 1.3)
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.bodySmall
