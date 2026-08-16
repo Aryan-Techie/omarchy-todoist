@@ -25,9 +25,6 @@ ones — all without leaving the keyboard.
   [Todoist filter](https://www.todoist.com/help/articles/introduction-to-filters-V98wIH)
   field in Settings for anything more specific (defaults to `today | overdue`).
 - Settings view (gear icon) to paste your API token and manage the above.
-- **Shift+Q** on a selected task opens a full editor — title, priority,
-  due date/time (natural language, same parser as quick-add), project,
-  and labels — separate from the lightweight `e` inline title edit.
 - Optional global keyboard shortcut (**Ctrl+Super+Y** by default, or record
   your own) to toggle the panel from anywhere — no mouse required.
 - Refreshes automatically every 5 minutes while open, every 15 minutes in the
@@ -90,7 +87,6 @@ The whole panel is operable without a mouse:
 | `Enter` | Open the selected task on the Todoist website, then close the panel |
 | `Space` | Complete the selected task |
 | `e` | Edit the selected task's title in place |
-| `Shift+Q` | Open the full editor: title, priority, due, project, labels |
 | `x` | Delete the selected task (asks for confirmation first) |
 | `q` | Jump into the Add-a-task box |
 | `r` | Refresh |
@@ -104,21 +100,6 @@ temporarily suspends these so normal typing works. `x` for delete matches
 this shell's own convention (see `Ui/PanelKeyCatcher.qml`) rather than the
 physical Delete key, which has no printable character for a panel's key
 handler to see.
-
-### The full editor (Shift+Q)
-
-Opens a card over the task list with every editable field: title, priority
-(**P1**–**P4**), a due field (natural language, same parser as quick-add —
-"tomorrow at 5pm", "every Monday"), a **Clear due date** button, a project
-picker, and a label picker. `Tab`/`Shift+Tab` walks every field in order;
-`Enter` saves from the title or due field, or activates whichever button/
-picker is focused; `Escape` cancels without saving, from any field. Only
-the fields you actually changed are sent to Todoist. Changing the project
-fires a second, separate API call (Todoist's Update Task endpoint doesn't
-move tasks between projects) — the editor stays open and shows "Saving…"
-until both calls that were needed finish; if either fails, the error shows
-inline and the editor stays open so you can fix it and retry rather than
-losing what you typed.
 
 ### Keyboard shortcut
 
@@ -194,11 +175,8 @@ want your token gone too.
 Uses the [Todoist API v1](https://developer.todoist.com/api/v1/):
 `GET /tasks/filter` (or plain `GET /tasks` for the All view), `POST
 /tasks/quick` (Quick Add, natural-language parsing) for new tasks, `POST
-/tasks/{id}` to edit a task's title/priority/due/labels, `POST
-/tasks/{id}/move` to change a task's project (a separate endpoint — Update
-Task itself has no `project_id` field), `GET /projects` and `GET /labels`
-to populate the full editor's pickers, `POST /tasks/{id}/close` to
-complete, `DELETE /tasks/{id}` to delete. `Enter` opens
+/tasks/{id}` to edit a task's title, `POST /tasks/{id}/close` to complete,
+`DELETE /tasks/{id}` to delete. `Enter` opens
 `https://app.todoist.com/app/task/{id}` in your default browser. The older
 REST API v2 was retired by Todoist in February 2026, so this plugin only
 supports the current API.

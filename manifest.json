@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.aryan-techie.todoist",
   "name": "Todoist",
-  "version": "1.12.0",
+  "version": "1.11.0",
   "author": "aryan-techie",
   "license": "MIT",
   "description": "Todoist task count in the bar, with a panel to view due/overdue tasks, check them off, and quick-add new ones.",

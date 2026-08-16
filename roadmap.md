@@ -267,38 +267,7 @@ launch-readiness.
   C++, and nothing in the built-in shell does this either, so the risk is
   accepted and documented (checklist.md) rather than engineered around.
 
-## v1.12 — Advanced Task Editing — shipped
-
-- `Shift+Q` opens a full editor for the selected task, separate from the
-  lightweight `e` inline title-only edit (which is untouched): title,
-  priority (**P1**–**P4**), due date/time as one natural-language field
-  (same parser Quick Add already uses, plus an explicit **Clear due date**
-  button rather than two separate date/time widgets), project (`Ui/Dropdown`),
-  and labels (`Ui/MultiSelect`). `Tab`/`Shift+Tab` walks every field,
-  `Enter` saves, `Escape` cancels — same explicit focus-chain approach
-  Settings already uses, extended with two small focusable proxy items for
-  the project/label pickers (Dropdown/MultiSelect don't expose their
-  internal focusable trigger for an external `forceActiveFocus()` to land
-  on, so the proxy stands in for "the chain's cursor is here" and drives
-  the real component's own `hasCursor` visual).
-- Verified against the live Todoist OpenAPI spec (not guessed) before
-  building: Update Task (`POST /tasks/{id}`) has no `project_id` field —
-  moving a task between projects is a separate `POST /tasks/{id}/move`
-  call, fired alongside the Update call when needed. `GET /projects` and
-  `GET /labels` populate the pickers (fetched once per panel lifetime,
-  cached). Clearing a due date has no documented `null`/clear flag on this
-  endpoint (unlike `assignee_id`/`duration`, which do) — uses Todoist's
-  long-standing `due_string: "no date"` convention instead, same NLP engine
-  as everything else due-related in this plugin.
-- Only fields actually changed are sent (diffed against the task's original
-  values, same "omit to keep unchanged" contract the API already documents
-  for every other field). Optimistic local update on save, same pattern as
-  the existing complete/delete/inline-title-edit actions; loading state
-  ("Saving…", fields disabled) while the save call(s) are in flight; on
-  failure the editor stays open with the error shown inline so nothing
-  typed is lost.
-
-## v1.13 — projects & richer task views (next)
+## v1.12 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any
   of them from a dropdown instead of typing `#ProjectName`.
@@ -307,14 +276,17 @@ launch-readiness.
 - Labels: filter by label, show label chips on tasks.
 - Sections within a project (if useful once real usage shows a need).
 
-## v1.14 — more task actions
+## v1.13 — more task actions
 
+- Change a task's due date from the row (quick "today" / "tomorrow" / pick a
+  date) instead of only through Todoist itself.
+- Set/change priority from the row.
 - Reopen a just-completed task (undo) — Todoist's `/tasks/{id}/reopen`
   endpoint already supports this, just needs UI.
 - Mouse-accessible delete (small button on hover) alongside the `x` shortcut.
-- Edit description (the advanced editor doesn't cover this yet).
+- Edit description, not just title.
 
-## v1.15 — comments & subtasks
+## v1.14 — comments & subtasks
 
 - Show subtask count / expand subtasks under a parent task.
 - Task comments — view count, maybe add one.
