@@ -145,12 +145,12 @@ Tracks what's done and what's left before submitting to
       no-priority task stays the normal text color
 - [x] Position-shift issue (Today ↔ Inbox/All, panel left open) — user
       confirmed v1.9.1's fix resolved it.
-- [ ] **User to re-test**: confirm the quick-add row and the Today/Inbox/All
-      tab row no longer show anything poking past the panel's left edge,
-      especially with whichever tab is currently selected. Fixed
-      defensively in v1.9.2 (`clip: true` on both rows) without being able
-      to reproduce the original overflow directly — same caveat as above,
-      needs the user's own confirmation.
+- [ ] **User to re-test**: confirm the quick-add field and the
+      Today/Inbox/All tabs now feel properly spaced from the panel's edges,
+      not cramped against the border. v1.9.2's `clip: true` (defensive,
+      unconfirmed) turned out not to be the real fix — the user clarified
+      nothing was shifting, it was just insufficient padding around the
+      whole panel. v1.9.3 bumped `KeyboardPanel`'s padding 14px → 20px.
 
 ## Known, accepted issues
 

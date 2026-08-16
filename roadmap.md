@@ -194,6 +194,27 @@ launch-readiness.
   and lay out correctly) but, like v1.9.1, flagged for the user to confirm
   it actually addresses what they saw.
 
+## v1.9.3 — shipped
+
+- Turned out the "overflow"/"shifting" reports in v1.9.1/v1.9.2 were a
+  misread on my part — the user clarified nothing was actually moving; the
+  quick-add field and tab row just felt too close to the panel's left edge,
+  cramped against the border. Root cause: `KeyboardPanel`'s default padding
+  (14px) reads as tight specifically next to a *bordered* control like the
+  TextField — two borders sitting close together (the card's and the
+  field's own) feel more cramped than the same gap next to plain text does.
+  Fixed directly by bumping the panel's own `padding` to 20px, giving every
+  edge more breathing room uniformly (not just the left side, and not just
+  the quick-add row) rather than special-casing one element.
+- Lesson from this whole thread (v1.9 → v1.9.3): "overflowing"/"shifting"
+  turned out to mean three *different* things across four reports — a
+  content-driven resize (v1.8), an anchor-point shift from the bar pill's
+  own width changing (v1.9.1), a possible border render quirk (v1.9.2,
+  never confirmed), and finally just "not enough padding" (v1.9.3, the
+  actual one). Worth asking "is something moving, or does something look
+  too close to an edge" early next time similar wording comes up, rather
+  than assuming a dynamic bug from words like "overflow"/"shift" alone.
+
 ## v1.10 — projects & richer task views (next)
 
 - Browse the user's actual project list (not just Inbox) and filter by any

@@ -791,6 +791,11 @@ Panel {
     // Flickable below rather than resizing the window around it.
     contentWidth: panel.fittedContentWidth(root.panelWidth)
     contentHeight: panel.fittedContentHeight(root.panelHeight)
+    // KeyboardPanel's own default (popup-padding, 14px) reads as cramped
+    // right next to a bordered control like the quick-add field — its own
+    // border sitting close to the card's border reads tighter than the same
+    // gap next to plain text. A bit more room on all four sides fixes it.
+    padding: Style.space(20)
 
     PanelKeyCatcher {
       id: keyCatcher
