@@ -15,7 +15,7 @@ In short:
 
 If you find a security issue — a way the token could leak, an injection point in how a shell command gets built, an unexpected file being written or modified outside what's documented above — please report it privately rather than opening a public issue:
 
-**rdngaming25@gmail.com**
+**aryan@aroice.in**
 
 Include what you found, the plugin version (`manifest.json`'s `version` field), and reproduction steps if you have them. I'll aim to acknowledge within a few days.
 
