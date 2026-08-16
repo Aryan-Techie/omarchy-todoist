@@ -12,6 +12,10 @@
 [![Validate](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml/badge.svg)](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+*Part of the [AROICE](https://aroice.in) family of tools.*
+
+[Features](#features) • [Install](#install) • [Usage](#usage) • [Contributing](#contributing)
+
 </div>
 
 The bar shows how many tasks are due today or overdue; click it for a popup
@@ -36,6 +40,7 @@ add new ones — all without leaving the keyboard.
 - [Getting help](#getting-help)
 - [Changelog](#changelog)
 - [License](#license)
+- [Author](#author)
 
 ## Features
 
@@ -232,3 +237,22 @@ See [CHANGELOG.md](CHANGELOG.md) for what's changed in each version.
 
 MIT — see [LICENSE](LICENSE). The Todoist icon used above is a third-party
 asset under a separate license — see [assets/NOTICE.md](assets/NOTICE.md).
+
+## Author
+
+**Aryan Techie** ([Aryan Jangra](https://aryan.aroice.in))
+
+- 🌐 Website: [aryan.aroice.in](https://aryan.aroice.in)
+- 📧 Email: [aryan@aroice.in](mailto:aryan@aroice.in)
+- 🐙 GitHub: [@Aryan-Techie](https://github.com/Aryan-Techie)
+- 🏢 Organization: [AROICE](https://aroice.in)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by [AROICE](https://github.com/AROICE-HQ)**
+
+*Clear tools for a clear mind.*
+
+</div>
