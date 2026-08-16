@@ -174,6 +174,21 @@ Tracks what's done and what's left before submitting to
   engine quirk in this environment, not a functional bug — cosmetic log
   noise only, does not affect behavior. Left as-is rather than restructuring
   further.
+- The Settings gear icon (`󰒓`) is a Nerd Font Private Use Area codepoint with
+  no verified runtime fallback, and this is accepted rather than fixed.
+  Investigated 2026-08-16: the shell's `Style.fontFamily` is bound to
+  `"monospace"`, a fontconfig alias that `omarchy font set` can repoint to
+  *any* installed font — `Style.qml`'s own comment only says it *currently*
+  resolves to "e.g. JetBrainsMono Nerd Font," not that it's guaranteed to.
+  Checked whether Quickshell/QML exposes a "does this font have this
+  codepoint" runtime check to build a real fallback with — it doesn't,
+  without dropping into C++, and nothing in the built-in shell (including
+  the notifications panel's own glyph-fallback code) does this either; every
+  built-in use of a Nerd Font glyph makes the same unverified assumption.
+  Decision: keep `󰒓` as-is rather than build one-off detection this plugin
+  would be the only thing in the shell attempting. If it ever renders as a
+  missing-character box on a real system, the fix is a one-line revert to
+  plain `⚙` (already noted above) — not a new mechanism.
 
 ## Before hitting submit
 
