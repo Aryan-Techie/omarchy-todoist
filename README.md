@@ -12,11 +12,15 @@
 [![Validate](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml/badge.svg)](https://github.com/Aryan-Techie/omarchy-todoist/actions/workflows/validate.yml)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+<a href="https://www.producthunt.com/products/todoist-for-omarchy?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-todoist-for-omarchy" target="_blank" rel="noopener noreferrer"><img alt="Todoist for Omarchy - Your Todoist tasks, one keystroke away on Omarchy | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1224750&theme=neutral&t=1786952170504"></a>
+
 *Part of the [AROICE](https://aroice.in) family of tools.*
 
 [Features](#features) • [Install](#install) • [Usage](#usage) • [Contributing](#contributing) • [Case Study](https://www.aryantechie.com/work/omarchy-todoist-plugin)
 
 </div>
+
+![Todoist for Omarchy — your Todoist tasks, one keystroke away in Omarchy's top bar](assets/hero-banner.jpg)
 
 The bar shows how many tasks are due today or overdue; click it for a popup
 with the full list, a checkbox to complete each task, and a box to quickly
@@ -71,6 +75,11 @@ constraints, and a few things that didn't work the first time.
   every 2 minutes while the popup's open, or every 20 minutes in the
   background while it's closed (never both at once). Overlapping refresh
   requests are coalesced into one, so nothing fires twice.
+- Matches whatever Omarchy theme you're running — the panel pulls its
+  colors from the shell's own theme system, so it looks native under light,
+  dark, or any custom accent color, with no separate config to keep in sync.
+
+![The panel rendered under several different Omarchy themes, showing it automatically picks up each theme's colors](assets/theme-support.jpeg)
 
 ## Install
 
