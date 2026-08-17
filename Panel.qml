@@ -401,6 +401,20 @@ Panel {
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
+  // ---- Runs a curl Process with the Todoist Authorization header. The
+  //      token is deliberately never placed in `command` — argv is visible
+  //      to every local user via /proc or `ps`, so the header is instead
+  //      handed to curl over its own stdin as a "-K -" config line (curl's
+  //      documented way to keep a secret out of the process list); `command`
+  //      itself must include "-K", "-" wherever the header would have gone.
+  function runAuthedCurl(proc, command) {
+    proc.stdinEnabled = true
+    proc.command = command
+    proc.running = true
+    proc.write("header = \"Authorization: Bearer " + root.apiToken + "\"\n")
+    proc.stdinEnabled = false
+  }
+
   function commitEditTask() {
     var index = root.editingTaskIndex
     root.editingTaskIndex = -1
@@ -418,12 +432,10 @@ Panel {
     nextTasks[index] = updated
     root.tasks = nextTasks
 
-    editProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
-      "-H", "Authorization: Bearer " + root.apiToken,
+    runAuthedCurl(editProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "POST",
       "-H", "Content-Type: application/json",
       "-d", JSON.stringify({ content: newContent }),
-      root.apiBase + "/tasks/" + encodeURIComponent(task.id)]
-    editProc.running = true
+      root.apiBase + "/tasks/" + encodeURIComponent(task.id)])
   }
 
   // ---- Delete (the selected task, via "x" or a task row's delete button).
@@ -455,10 +467,8 @@ Panel {
     root.pendingDeleteTaskContent = ""
     if (taskId === "") return
     root.tasks = root.tasks.filter(function(t) { return !t || t.id !== taskId })
-    deleteProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "DELETE",
-      "-H", "Authorization: Bearer " + root.apiToken,
-      root.apiBase + "/tasks/" + encodeURIComponent(taskId)]
-    deleteProc.running = true
+    runAuthedCurl(deleteProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "DELETE",
+      root.apiBase + "/tasks/" + encodeURIComponent(taskId)])
   }
 
   // ---- Task list. Every mutating action (add/complete/edit/delete/view
@@ -489,9 +499,7 @@ Panel {
       url = root.apiBase + "/tasks/filter?query=" + encodeURIComponent(query) + "&lang=en"
     }
 
-    listProc.command = ["curl", "-fsS", "--max-time", "10",
-      "-H", "Authorization: Bearer " + root.apiToken, url]
-    listProc.running = true
+    runAuthedCurl(listProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", url])
     // A fetch just actually started — push both poll timers' next tick out
     // from here rather than from whenever the panel happened to open, so a
     // background/interval tick can't land moments after a refresh some
@@ -511,12 +519,10 @@ Panel {
     var text = Model.quickAddHasDueHint(content) ? content : (content + " today")
     root.quickAddSubmitting = true
     root.errorText = ""
-    createProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
-      "-H", "Authorization: Bearer " + root.apiToken,
+    runAuthedCurl(createProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "POST",
       "-H", "Content-Type: application/json",
       "-d", JSON.stringify({ text: text }),
-      root.apiBase + "/tasks/quick"]
-    createProc.running = true
+      root.apiBase + "/tasks/quick"])
   }
 
   // ---- Complete task. Marked "completing" (struck through, dimmed) right
@@ -558,10 +564,8 @@ Panel {
     if (actionProc.running || root.actionQueue.length === 0) return
     var taskId = root.actionQueue.shift()
     actionProc.pendingTaskId = taskId
-    actionProc.command = ["curl", "-fsS", "--max-time", "10", "-X", "POST",
-      "-H", "Authorization: Bearer " + root.apiToken,
-      root.apiBase + "/tasks/" + encodeURIComponent(taskId) + "/close"]
-    actionProc.running = true
+    runAuthedCurl(actionProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "POST",
+      root.apiBase + "/tasks/" + encodeURIComponent(taskId) + "/close"])
   }
 
   // ---- Keyboard shortcut recording. Mirrors a stripped-down Hyprland key

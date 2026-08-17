@@ -2,6 +2,12 @@
 
 All notable user-facing changes to this plugin. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## v1.13 — Token no longer exposed via the process list
+
+### Security
+
+- The Todoist API token was passed to `curl` as a literal `-H "Authorization: Bearer …"` argument, which made it visible to any local user via `ps`/`/proc/<pid>/cmdline` for the brief window each request was in flight. The token is now handed to `curl` over its own stdin (`-K -`, curl's documented pattern for this exact problem) instead of argv, so it never appears in the process list. Nothing else about the token's storage or handling changes — it's still only ever sent to `api.todoist.com` and stored `chmod 600` on disk. Reported in [omarchy-plugin-marketplace#430](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/430).
+
 ## v1.12 — Smarter Refresh
 
 ### Changed
