@@ -107,8 +107,7 @@ your count.
 The panel drops right below its bar icon (not centered on the bar), at a
 fixed size you control — see **Settings → Advanced** below. Content that
 doesn't fit scrolls inside the panel instead of resizing it. The bar pill
-itself also holds a fixed width regardless of task count, so the panel's
-anchor point doesn't shift as the count's digit-length changes (e.g. 7 → 15).
+sizes itself to the displayed task count so it only uses the space it needs.
 
 ## Usage
 

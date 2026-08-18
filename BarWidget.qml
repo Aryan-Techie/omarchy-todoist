@@ -84,18 +84,6 @@ BarWidget {
     function toggle(): void { root.togglePanel() }
   }
 
-  // Reserves room for the widest realistic label ("✓ 999") so the pill's
-  // own width — and with it the popup's centered-under-icon anchor point —
-  // never shifts as the task count's digit-length changes (e.g. "✓ 7" vs
-  // "✓ 15"). Horizontal bar mode only; vertical mode already uses a fixed
-  // icon-slot width regardless of label.
-  TextMetrics {
-    id: widthMetrics
-    font.family: button.fontFamily
-    font.pixelSize: button.fontSize
-    text: "✓ 999"
-  }
-
   WidgetButton {
     id: button
     anchors.fill: parent
@@ -104,7 +92,6 @@ BarWidget {
     tooltipText: "Todoist"
     horizontalMargin: 8.75
     verticalPadding: 8.75
-    fixedWidth: root.vertical ? -1 : Math.ceil(widthMetrics.width + Style.spaceReal(horizontalMargin) * 2)
 
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.refresh()
