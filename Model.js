@@ -38,6 +38,19 @@ function taskDueLabel(task) {
   return task.due.string || isoDatePrefix(task.due.date)
 }
 
+// "#Project  @label1 @label2" line shown under the due date. projectName is
+// looked up by the caller (task only carries project_id) and omitted when
+// unknown; labels come straight off the task, Todoist's API already gives
+// them as name strings rather than ids.
+function taskMetaLabel(task, projectName) {
+  if (!task) return ""
+  var parts = []
+  if (projectName) parts.push("#" + projectName)
+  var labels = task.labels || []
+  for (var i = 0; i < labels.length; i++) parts.push("@" + labels[i])
+  return parts.join("  ")
+}
+
 function taskIsOverdue(task) {
   if (!task || !task.due || !task.due.date) return false
   return isoDatePrefix(task.due.date) < todayIsoDate()

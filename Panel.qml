@@ -27,6 +27,8 @@ Panel {
 
   property string apiToken: ""
   property string filterQuery: "today | overdue"
+  property bool showTaskMeta: true
+  property var projectsById: ({})
   // "today" | "inbox" | "all" | "custom" — the three tabs plus whatever the
   // free-form filter field in Settings last applied.
   property string quickView: "today"
@@ -200,6 +202,7 @@ Panel {
     if (typeof parsed.keybind === "string") root.keybindCombo = parsed.keybind
     if (typeof parsed.panelWidth === "number") root.panelWidth = Math.max(260, Math.min(700, parsed.panelWidth))
     if (typeof parsed.panelHeight === "number") root.panelHeight = Math.max(240, Math.min(800, parsed.panelHeight))
+    if (typeof parsed.showTaskMeta === "boolean") root.showTaskMeta = parsed.showTaskMeta
     root.settingsLoaded = true
     root.settingsView = root.apiToken === ""
     if (root.apiToken !== "") refresh()
@@ -212,7 +215,8 @@ Panel {
       quickView: root.quickView,
       keybind: root.keybindCombo,
       panelWidth: root.panelWidth,
-      panelHeight: root.panelHeight
+      panelHeight: root.panelHeight,
+      showTaskMeta: root.showTaskMeta
     }, null, 2) + "\n")
     // The token is a secret; keep the file readable only by the user. A
     // short defer gives the atomic write below somewhere to land first.
@@ -258,6 +262,12 @@ Panel {
   function setPanelHeight(height) {
     root.panelHeight = Math.max(240, Math.min(800, height))
     persistSettings()
+  }
+
+  function setShowTaskMeta(value) {
+    root.showTaskMeta = value
+    persistSettings()
+    if (value && Object.keys(root.projectsById).length === 0) fetchProjects()
   }
 
   // ---- Settings keyboard navigation. An explicit ordered chain (not
@@ -500,12 +510,24 @@ Panel {
     }
 
     runAuthedCurl(listProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", url])
+    // ponytail: fetched once and cached rather than every refresh — a
+    // renamed project won't show up until the next fetch (token save,
+    // toggling the setting on, or restart). Refetch on every poll if that
+    // staleness ever becomes a real complaint.
+    if (root.showTaskMeta && Object.keys(root.projectsById).length === 0) fetchProjects()
     // A fetch just actually started — push both poll timers' next tick out
     // from here rather than from whenever the panel happened to open, so a
     // background/interval tick can't land moments after a refresh some
     // other action already triggered.
     openRefreshTimer.restart()
     backgroundRefreshTimer.restart()
+  }
+
+  // ---- Project names for the #Project meta line — tasks only carry
+  //      project_id, so this is the one place that resolves ids to names.
+  function fetchProjects() {
+    if (root.apiToken === "" || projectsProc.running) return
+    runAuthedCurl(projectsProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", root.apiBase + "/projects"])
   }
 
   // ---- Quick add. Uses Todoist's own Quick Add parser (/tasks/quick) so
@@ -705,6 +727,29 @@ Panel {
   }
 
   Process {
+    id: projectsProc
+    stdout: StdioCollector {
+      id: projectsOut
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw === "") return
+        try {
+          var parsed = JSON.parse(raw)
+          var results = (parsed && parsed.results) ? parsed.results : []
+          var byId = {}
+          for (var i = 0; i < results.length; i++) byId[results[i].id] = results[i].name
+          root.projectsById = byId
+        } catch (e) { /* keep whatever project names we already had */ }
+      }
+    }
+    stderr: StdioCollector {
+      id: projectsErr
+      waitForEnd: true
+    }
+  }
+
+  Process {
     id: createProc
     stderr: StdioCollector {
       id: createErr
@@ -886,6 +931,8 @@ Panel {
 
     readonly property bool overdue: Model.taskIsOverdue(task)
     readonly property string dueLabel: Model.taskDueLabel(task)
+    readonly property string metaLabel: root.showTaskMeta && task
+      ? Model.taskMetaLabel(task, root.projectsById[task.project_id]) : ""
     readonly property bool completing: task ? root.completingTaskIds.indexOf(task.id) !== -1 : false
     readonly property bool editing: root.editingTaskIndex === rowIndex
     // Todoist priority colors (API priority 4 = p1, the most urgent, down
@@ -972,6 +1019,17 @@ Panel {
         width: parent.width
         text: row.dueLabel
         color: row.overdue ? Color.urgent : Qt.darker(root.contentForeground, 1.5)
+        wrapMode: Text.WordWrap
+        font.family: root.contentFontFamily
+        font.pixelSize: Style.font.caption
+      }
+
+      Text {
+        visible: row.metaLabel !== "" && !row.editing
+        height: visible ? implicitHeight : 0
+        width: parent.width
+        text: row.metaLabel
+        color: Qt.darker(root.contentForeground, 1.7)
         wrapMode: Text.WordWrap
         font.family: root.contentFontFamily
         font.pixelSize: Style.font.caption
@@ -1422,6 +1480,16 @@ Panel {
                   bordered: true
                   text: "Keyboard shortcuts (?)"
                   onClicked: root.helpOpen = true
+                }
+
+                NavButton {
+                  id: showTaskMetaButton
+                  width: parent.width
+                  leftAlign: true
+                  bordered: true
+                  selected: root.showTaskMeta
+                  text: "Show #project & @labels: " + (root.showTaskMeta ? "On" : "Off")
+                  onClicked: root.setShowTaskMeta(!root.showTaskMeta)
                 }
               }
             }
