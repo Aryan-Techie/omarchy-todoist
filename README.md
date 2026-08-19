@@ -58,6 +58,8 @@ constraints, and a few things that didn't work the first time.
   by Todoist priority (**p1 red, p2 yellow, p3 blue, p4 normal**). The Today
   view splits into **Overdue** and **Today** sections so you can tell at a
   glance what's actually late.
+- Each task shows its **#Project** and any **@labels** under the due date
+  (toggle off in **Settings → General** if you'd rather keep the list bare).
 - Click the circle next to a task to mark it complete (updates instantly,
   syncs to Todoist in the background).
 - Quick-add box uses Todoist's own Quick Add parser — `p1`–`p4` priority,
@@ -120,7 +122,8 @@ anchor point doesn't shift as the count's digit-length changes (e.g. 7 → 15).
   to create a task — see Quick Add syntax above (`p1`, `#Project`, dates).
 - The gear icon (or `p`) opens Settings, organized into **Account**,
   **Default filter**, **Keyboard shortcut**, **General** (Refresh now,
-  Keyboard shortcuts), and **Advanced** (popup size) sections.
+  Keyboard shortcuts, Show #project & @labels), and **Advanced** (popup
+  size) sections.
 - Middle-click the bar icon to refresh without opening the panel, or press
   `r` while the panel's open.
 
