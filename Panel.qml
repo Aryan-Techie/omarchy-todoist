@@ -1323,13 +1323,24 @@ Panel {
           }
 
           // ---- Stats grid, native-panel style (network panel's Ping/
-          //      Packet Loss/IP/Gateway grid, GridLayout + fillWidth +
-          //      right-aligned values, not a plain Grid — a plain Grid has
-          //      no stretch behavior, which left the first pass hugging the
-          //      left edge with dead space on the right). Every cell
-          //      derives from state already fetched/computed elsewhere —
-          //      no extra API calls.
+          //      Packet Loss/IP/Gateway grid, GridLayout + right-aligned
+          //      values, not a plain Grid — a plain Grid has no stretch
+          //      behavior, which left the first pass hugging the left edge
+          //      with dead space on the right). Every cell derives from
+          //      state already fetched/computed elsewhere — no extra API
+          //      calls.
+          //
+          //      Every cell gets an explicit, equal Layout.preferredWidth
+          //      instead of Layout.fillWidth + GridLayout's own content-
+          //      based auto-sizing — fillWidth let the VIEW column's width
+          //      track quickViewShortLabel's text length ("TODAY"/"INBOX",
+          //      5 chars, vs "ALL", 3), which shifted where every column
+          //      after it landed depending on which tab was active. Same
+          //      fixed-cellWidth technique already used for the tab
+          //      ButtonGroup's wrapper sizing and barCountRow below —
+          //      column widths now can't depend on any cell's content.
           GridLayout {
+            id: statsGrid
             width: parent.width
             visible: root.headerStatsVisible
             height: visible ? implicitHeight : 0
@@ -1338,29 +1349,31 @@ Panel {
             columnSpacing: Style.space(20)
             rowSpacing: Style.spacing.labelGap
 
-            StatLabel { text: "TASKS" }
+            readonly property real cellWidth: (width - columnSpacing * 3) / 4
+
+            StatLabel { text: "TASKS"; Layout.preferredWidth: statsGrid.cellWidth }
             StatValue {
-              Layout.fillWidth: true
+              Layout.preferredWidth: statsGrid.cellWidth
               horizontalAlignment: Text.AlignRight
               text: String(root.taskCount)
             }
-            StatLabel { text: "OVERDUE" }
+            StatLabel { text: "OVERDUE"; Layout.preferredWidth: statsGrid.cellWidth }
             StatValue {
-              Layout.fillWidth: true
+              Layout.preferredWidth: statsGrid.cellWidth
               horizontalAlignment: Text.AlignRight
               text: String(root.overdueCount)
               color: root.overdueCount > 0 ? Color.urgent : root.contentForeground
             }
 
-            StatLabel { text: "VIEW" }
+            StatLabel { text: "VIEW"; Layout.preferredWidth: statsGrid.cellWidth }
             StatValue {
-              Layout.fillWidth: true
+              Layout.preferredWidth: statsGrid.cellWidth
               horizontalAlignment: Text.AlignRight
               text: root.quickViewShortLabel
             }
-            StatLabel { text: "SYNCED" }
+            StatLabel { text: "SYNCED"; Layout.preferredWidth: statsGrid.cellWidth }
             StatValue {
-              Layout.fillWidth: true
+              Layout.preferredWidth: statsGrid.cellWidth
               horizontalAlignment: Text.AlignRight
               text: root.syncedLabel
             }
