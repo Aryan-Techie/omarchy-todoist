@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -97,6 +98,18 @@ Panel {
   // listProc's own exit handler starts one more fetch once it sees this,
   // so a triggering action never has its refresh silently dropped.
   property bool refreshPending: false
+  // 0 = never synced. Set from listProc's own success path (not from
+  // refresh() itself, which fires before the request completes) so the
+  // header's SYNCED stat always reflects a real, landed response.
+  property real lastSyncedAt: 0
+
+  // ---- Bar count (Settings → Bar Count). A fixed choice independent of
+  //      whichever tab the popup itself is showing — "hide" is the shipped
+  //      default (icon-only bar pill). Kept separate from `quickView` on
+  //      purpose: switching tabs while the popup is open must not change
+  //      what the bar badge shows.
+  property string barCountMode: "hide"
+  property int barCountValue: 0
 
   property string tokenDraft: ""
   property string quickAddText: ""
@@ -120,20 +133,32 @@ Panel {
     : root.quickView === "custom" ? "CUSTOM FILTER"
     : "TODAY & OVERDUE"
 
+  // Short form for the header stats grid, where a narrow fixed column
+  // (down to a 260px panel width, Settings → Advanced) has much less room
+  // than the section-header use of quickViewLabel above.
+  readonly property string quickViewShortLabel: root.quickView === "inbox" ? "INBOX"
+    : root.quickView === "all" ? "ALL"
+    : root.quickView === "custom" ? "CUSTOM"
+    : "TODAY"
+
   readonly property string emptyStateMessage: root.quickView === "inbox" ? "Inbox is empty."
     : root.quickView === "all" ? "No tasks yet."
     : root.quickView === "custom" ? "No tasks match this filter."
     : "Nothing due. You're clear."
 
-  // ---- Overdue/Today split (Today view only). root.tasks is already
-  //      sorted by due date ascending (Model.sortedTasks), so every overdue
-  //      task (due date < today) sorts before every task actually due
-  //      today — the two groups are already contiguous, no re-sort needed,
-  //      just a row-anchored header wherever the group changes. Same
-  //      "header attached to the first row of its group" pattern the
-  //      built-in bluetooth panel uses for its Paired/Available sections.
+  // ---- Overdue count. Computed across whatever's currently loaded in
+  //      root.tasks regardless of view, so the header stats grid's OVERDUE
+  //      cell means "overdue among what you're looking at" on every tab —
+  //      not just Today. The OVERDUE/TODAY row-anchored section split below
+  //      is still Today-only (taskSectionTitle gates that separately);
+  //      root.tasks is already sorted by due date ascending (Model
+  //      .sortedTasks), so every overdue task (due date < today) sorts
+  //      before every task actually due today — the two groups are already
+  //      contiguous there, no re-sort needed, just a row-anchored header
+  //      wherever the group changes. Same "header attached to the first row
+  //      of its group" pattern the built-in bluetooth panel uses for its
+  //      Paired/Available sections.
   readonly property int overdueCount: {
-    if (root.quickView !== "today") return 0
     var n = 0
     for (var i = 0; i < root.tasks.length; i++) if (Model.taskIsOverdue(root.tasks[i])) n++
     return n
@@ -147,12 +172,39 @@ Panel {
     return isOverdue ? ("OVERDUE · " + root.overdueCount) : ("TODAY · " + root.todayDueCount)
   }
 
-  readonly property string headerSubtitle: {
+  // Stats grid shows whenever there's a token, we're not mid-settings, and
+  // the very first fetch has landed — independent of the subtitle line
+  // below (they used to be mutually exclusive; the Wi-Fi panel shows its
+  // icon/title/subtitle *and* its stats grid together, always, so this
+  // does too).
+  readonly property bool headerStatsVisible: root.apiToken !== "" && !root.settingsView
+    && !(root.loading && root.tasks.length === 0)
+
+  // ---- Rotating header subtitle ("trail of fading text" — same mechanism
+  //      as the built-in Wi-Fi panel's connection-phrase cycler). Three
+  //      static messages cover the states where there's nothing to cycle
+  //      through; otherwise a phrase list rotates on a timer (see the
+  //      Timer + SequentialAnimation near the header UI below).
+  readonly property var taskPhrases: [
+    "Counting boxes", "Chasing deadlines", "Sorting priorities",
+    "Clearing inbox", "Syncing lists", "Crossing off wins", "Hunting overdue",
+  ]
+  property int taskPhraseIndex: 0
+  readonly property string taskPhrase: root.taskPhrases[root.taskPhraseIndex % root.taskPhrases.length]
+
+  readonly property string headerMeta: {
     if (root.apiToken === "") return "NOT CONNECTED"
     if (root.settingsView) return "SETTINGS"
     if (root.loading && root.tasks.length === 0) return "LOADING…"
-    return root.quickViewLabel + " · " + root.taskCount + (root.taskCount === 1 ? " TASK" : " TASKS")
+    return root.taskPhrase.toUpperCase()
   }
+
+  readonly property string syncedLabel: Model.formatRelativeTime(root.lastSyncedAt)
+
+  readonly property string barCountModeLabel: root.barCountMode === "today" ? "today"
+    : root.barCountMode === "inbox" ? "in Inbox"
+    : root.barCountMode === "all" ? "total"
+    : ""
 
   // ---- Lifecycle. Matches the clock/weather contract: open() refreshes
   //      before showing so the list is never more than one popup-open stale.
@@ -200,9 +252,11 @@ Panel {
     if (typeof parsed.keybind === "string") root.keybindCombo = parsed.keybind
     if (typeof parsed.panelWidth === "number") root.panelWidth = Math.max(260, Math.min(700, parsed.panelWidth))
     if (typeof parsed.panelHeight === "number") root.panelHeight = Math.max(240, Math.min(800, parsed.panelHeight))
+    if (typeof parsed.barCountMode === "string" && ["hide", "today", "inbox", "all"].indexOf(parsed.barCountMode) !== -1)
+      root.barCountMode = parsed.barCountMode
     root.settingsLoaded = true
     root.settingsView = root.apiToken === ""
-    if (root.apiToken !== "") refresh()
+    if (root.apiToken !== "") { refresh(); refreshBarCount() }
   }
 
   function persistSettings() {
@@ -212,7 +266,8 @@ Panel {
       quickView: root.quickView,
       keybind: root.keybindCombo,
       panelWidth: root.panelWidth,
-      panelHeight: root.panelHeight
+      panelHeight: root.panelHeight,
+      barCountMode: root.barCountMode
     }, null, 2) + "\n")
     // The token is a secret; keep the file readable only by the user. A
     // short defer gives the atomic write below somewhere to land first.
@@ -271,6 +326,7 @@ Panel {
     var chain = [tokenField, saveTokenButton]
     if (root.apiToken !== "") chain.push(removeTokenButton)
     chain.push(filterField, filterApplyButton)
+    chain.push(barCountHideButton, barCountTodayButton, barCountInboxButton, barCountAllButton)
     if (root.recordingKeybind) {
       chain.push(applyKeybindButton, cancelKeybindButton)
     } else {
@@ -479,6 +535,16 @@ Panel {
   //      handler fire it once the in-flight one finishes. That's how an
   //      "immediate" refresh stays immediate without ever running two list
   //      fetches at the same time.
+  // Shared by refresh() (the popup's own list) and refreshBarCount() (the
+  // bar badge's independent count) — same three endpoints either way.
+  function urlForView(view) {
+    if (view === "all") return root.apiBase + "/tasks"
+    var query = view === "inbox" ? "#Inbox"
+      : view === "custom" ? root.filterQuery
+      : "today | overdue"
+    return root.apiBase + "/tasks/filter?query=" + encodeURIComponent(query) + "&lang=en"
+  }
+
   function refresh() {
     if (root.apiToken === "") {
       root.settingsView = true
@@ -489,23 +555,34 @@ Panel {
     root.loading = true
     root.errorText = ""
 
-    var url
-    if (root.quickView === "all") {
-      url = root.apiBase + "/tasks"
-    } else {
-      var query = root.quickView === "inbox" ? "#Inbox"
-        : root.quickView === "custom" ? root.filterQuery
-        : "today | overdue"
-      url = root.apiBase + "/tasks/filter?query=" + encodeURIComponent(query) + "&lang=en"
-    }
-
-    runAuthedCurl(listProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", url])
+    runAuthedCurl(listProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", root.urlForView(root.quickView)])
     // A fetch just actually started — push both poll timers' next tick out
     // from here rather than from whenever the panel happened to open, so a
     // background/interval tick can't land moments after a refresh some
     // other action already triggered.
     openRefreshTimer.restart()
     backgroundRefreshTimer.restart()
+  }
+
+  // ---- Bar count (Settings → Bar Count). Independent of whichever tab the
+  //      popup itself is showing. Skips the request entirely when the
+  //      chosen mode happens to match the popup's current tab — reuses
+  //      root.taskCount instead of duplicating the fetch.
+  function refreshBarCount() {
+    if (root.barCountMode === "hide" || root.apiToken === "") return
+    if (root.barCountMode === root.quickView) {
+      root.barCountValue = root.taskCount
+      return
+    }
+    if (barCountProc.running) return
+    runAuthedCurl(barCountProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", root.urlForView(root.barCountMode)])
+  }
+
+  function setBarCountMode(mode) {
+    if (mode === root.barCountMode) return
+    root.barCountMode = mode
+    persistSettings()
+    root.refreshBarCount()
   }
 
   // ---- Quick add. Uses Todoist's own Quick Add parser (/tasks/quick) so
@@ -688,6 +765,10 @@ Panel {
           var results = (parsed && parsed.results) ? parsed.results : []
           root.tasks = Model.sortedTasks(results)
           root.errorText = ""
+          root.lastSyncedAt = Date.now()
+          // Keeps the bar badge's "same tab" fast path maximally fresh
+          // without waiting for the next poll tick.
+          root.refreshBarCount()
         } catch (e) {
           root.errorText = "Couldn't read the response from Todoist."
         }
@@ -701,6 +782,33 @@ Panel {
       root.loading = false
       if (exitCode !== 0) root.errorText = Model.errorMessageForExit(exitCode, listErr.text)
       if (root.refreshPending) Qt.callLater(root.refresh)
+    }
+  }
+
+  // Independent background count for the bar badge (Settings → Bar Count).
+  // Best-effort: a failed fetch here just keeps the last known value — this
+  // is a bar-pill nicety, not core functionality the way the popup's own
+  // task list is, so it doesn't surface an error anywhere.
+  Process {
+    id: barCountProc
+    stdout: StdioCollector {
+      id: barCountOut
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw === "") return
+        try {
+          var parsed = JSON.parse(raw)
+          var results = (parsed && parsed.results) ? parsed.results : []
+          root.barCountValue = results.length
+        } catch (e) {
+          // Keep the last known value.
+        }
+      }
+    }
+    stderr: StdioCollector {
+      id: barCountErr
+      waitForEnd: true
     }
   }
 
@@ -834,7 +942,7 @@ Panel {
     interval: 20 * 60 * 1000
     running: !root.opened && root.apiToken !== ""
     repeat: true
-    onTriggered: root.refresh()
+    onTriggered: { root.refresh(); root.refreshBarCount() }
   }
 
   Timer {
@@ -842,7 +950,47 @@ Panel {
     interval: 2 * 60 * 1000
     running: root.opened && root.apiToken !== ""
     repeat: true
-    onTriggered: root.refresh()
+    onTriggered: { root.refresh(); root.refreshBarCount() }
+  }
+
+  // ---- Rotating header subtitle ("trail of fading text"), same mechanism
+  //      as the built-in Wi-Fi panel's connection-phrase cycler: a Timer
+  //      advances the phrase index, wrapped in a fade-out/fade-in on the
+  //      subtitle Text (taskPhraseText, in the header UI below) so the
+  //      swap itself is never an abrupt cut. Only runs while there's
+  //      actually a phrase to show (headerStatsVisible) — same gating
+  //      Wi-Fi uses ("only while actively connected").
+  Timer {
+    id: taskPhraseTimer
+    interval: 2800
+    running: root.headerStatsVisible
+    repeat: true
+    onTriggered: taskPhraseSwap.restart()
+  }
+
+  SequentialAnimation {
+    id: taskPhraseSwap
+    PropertyAnimation {
+      target: taskPhraseText; property: "opacity"
+      to: 0.0; duration: 180; easing.type: Easing.OutQuad
+    }
+    ScriptAction {
+      script: root.taskPhraseIndex = (root.taskPhraseIndex + 1) % root.taskPhrases.length
+    }
+    PropertyAnimation {
+      target: taskPhraseText; property: "opacity"
+      to: 1.0; duration: 260; easing.type: Easing.InQuad
+    }
+  }
+
+  // Stops a fade stuck mid-animation (e.g. Settings opened mid-cycle) and
+  // snaps the subtitle back to fully visible, matching the reference's own
+  // cleanup on its equivalent state change.
+  onHeaderStatsVisibleChanged: {
+    if (!root.headerStatsVisible) {
+      taskPhraseSwap.stop()
+      taskPhraseText.opacity = 1.0
+    }
   }
 
   // ---- Settings' keyboard-navigable controls. Plain Button/PanelActionButton
@@ -870,6 +1018,21 @@ Panel {
       if (event.key === Qt.Key_Tab) { root.moveSettingsFocus(1); event.accepted = true }
       else if (event.key === Qt.Key_Backtab) { root.moveSettingsFocus(-1); event.accepted = true }
     }
+  }
+
+  // ---- Header stats grid — same label/value pairing the built-in network
+  //      panel uses for its Ping/Packet Loss/IP/Gateway grid.
+  component StatLabel: Text {
+    color: root.contentForeground
+    opacity: 0.6
+    font.family: root.contentFontFamily
+    font.pixelSize: Style.font.bodySmall
+  }
+
+  component StatValue: Text {
+    color: root.contentForeground
+    font.family: root.contentFontFamily
+    font.pixelSize: Style.font.bodySmall
   }
 
   // ---- One task row: complete button + content + due label. ----------
@@ -1076,35 +1239,50 @@ Panel {
         Column {
           id: mainColumn
           width: parent.width
-          spacing: Style.spacing.lg
+          // Matches the Wi-Fi panel's own flat top-level rhythm (Style
+          // .space(12) for every section gap, not the smaller semantic
+          // "lg" token) — that panel's spacing was the reference point for
+          // fixing this one's cramped feel.
+          spacing: Style.space(12)
 
           // ---- Header ---------------------------------------------------
-          // Height comes from titleColumn alone (not a Math.max of both
+          // Height comes from titleRow alone (not a Math.max of both
           // children) and actionsRow centers on that sibling directly,
           // rather than on the parent's own height — sizing a parent from a
           // child while anchoring that child back to the parent's center is
           // a classic Qt Quick binding-loop trap.
           Item {
             width: parent.width
-            height: titleColumn.implicitHeight
+            height: titleRow.implicitHeight
 
-            Column {
-              id: titleColumn
+            // Icon beside a title+subtitle Column (not icon+title as one
+            // Row with the subtitle spanning full width below both) — the
+            // subtitle needs to sit directly under "Todoist" specifically,
+            // not under the icon, same as the Wi-Fi panel's own header
+            // (heroIcon beside heroLabels, not above it).
+            Row {
+              id: titleRow
               anchors.left: parent.left
               anchors.top: parent.top
               anchors.right: actionsRow.left
               anchors.rightMargin: Style.spacing.sm
-              spacing: 2
+              // Matches the Wi-Fi panel's own icon-to-title gap
+              // (heroIcon → heroLabels leftMargin) literally — Style
+              // .spacing.xs (3px) read as barely any margin at all next to
+              // the now-bigger 24px icon.
+              spacing: Style.space(14)
 
-              Row {
-                spacing: Style.spacing.xs
+              TodoistIcon {
+                id: headerIcon
+                iconSize: Style.font.display
+                color: root.contentForeground
+                anchors.verticalCenter: parent.verticalCenter
+              }
 
-                Text {
-                  text: "✓"
-                  color: Color.accent
-                  font.family: root.contentFontFamily
-                  font.pixelSize: Style.font.title
-                }
+              Column {
+                anchors.verticalCenter: parent.verticalCenter
+                width: titleRow.width - headerIcon.width - titleRow.spacing
+                spacing: 2
 
                 Text {
                   text: "Todoist"
@@ -1113,22 +1291,26 @@ Panel {
                   font.pixelSize: Style.font.title
                   color: root.contentForeground
                 }
-              }
 
-              Text {
-                width: parent.width
-                text: root.headerSubtitle
-                elide: Text.ElideRight
-                color: Qt.darker(root.contentForeground, 1.4)
-                font.family: root.contentFontFamily
-                font.pixelSize: Style.font.caption
+                Text {
+                  id: taskPhraseText
+                  width: parent.width
+                  visible: text !== ""
+                  text: root.headerMeta
+                  elide: Text.ElideRight
+                  color: Qt.darker(root.contentForeground, 1.4)
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                }
               }
             }
 
             Row {
               id: actionsRow
               anchors.right: parent.right
-              anchors.verticalCenter: titleColumn.verticalCenter
+              anchors.verticalCenter: titleRow.verticalCenter
               spacing: Style.spacing.sm
 
               PanelActionButton {
@@ -1137,6 +1319,50 @@ Panel {
                 foreground: root.contentForeground
                 onClicked: root.settingsView = !root.settingsView
               }
+            }
+          }
+
+          // ---- Stats grid, native-panel style (network panel's Ping/
+          //      Packet Loss/IP/Gateway grid, GridLayout + fillWidth +
+          //      right-aligned values, not a plain Grid — a plain Grid has
+          //      no stretch behavior, which left the first pass hugging the
+          //      left edge with dead space on the right). Every cell
+          //      derives from state already fetched/computed elsewhere —
+          //      no extra API calls.
+          GridLayout {
+            width: parent.width
+            visible: root.headerStatsVisible
+            height: visible ? implicitHeight : 0
+            clip: true
+            columns: 4
+            columnSpacing: Style.space(20)
+            rowSpacing: Style.spacing.labelGap
+
+            StatLabel { text: "TASKS" }
+            StatValue {
+              Layout.fillWidth: true
+              horizontalAlignment: Text.AlignRight
+              text: String(root.taskCount)
+            }
+            StatLabel { text: "OVERDUE" }
+            StatValue {
+              Layout.fillWidth: true
+              horizontalAlignment: Text.AlignRight
+              text: String(root.overdueCount)
+              color: root.overdueCount > 0 ? Color.urgent : root.contentForeground
+            }
+
+            StatLabel { text: "VIEW" }
+            StatValue {
+              Layout.fillWidth: true
+              horizontalAlignment: Text.AlignRight
+              text: root.quickViewShortLabel
+            }
+            StatLabel { text: "SYNCED" }
+            StatValue {
+              Layout.fillWidth: true
+              horizontalAlignment: Text.AlignRight
+              text: root.syncedLabel
             }
           }
 
@@ -1249,6 +1475,71 @@ Panel {
                 id: filterApplyButton
                 text: "Apply"
                 onClicked: root.applyFilter(filterField.text)
+              }
+            }
+
+            PanelSeparator {
+              foreground: root.contentForeground
+            }
+
+            PanelSectionHeader {
+              text: "BAR COUNT"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Text {
+              width: parent.width
+              text: "Show a task count on the bar icon, independent of whichever tab the popup itself is on."
+              wrapMode: Text.WordWrap
+              color: Qt.darker(root.contentForeground, 1.3)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            // Explicit even cellWidth (not natural button width) — a plain
+            // Row of 4 labeled buttons has already overflowed this panel at
+            // narrow widths once before (General/Advanced, v1.10); this is
+            // the same fixed-cell technique the Wi-Fi panel's own DNS
+            // Provider pill row uses to guarantee it never does.
+            Row {
+              id: barCountRow
+              width: parent.width
+              clip: true
+              spacing: Style.spacing.sm
+
+              readonly property real cellWidth: (width - spacing * 3) / 4
+
+              NavButton {
+                id: barCountHideButton
+                width: barCountRow.cellWidth
+                text: "Hide"
+                selected: root.barCountMode === "hide"
+                onClicked: root.setBarCountMode("hide")
+              }
+
+              NavButton {
+                id: barCountTodayButton
+                width: barCountRow.cellWidth
+                text: "Today"
+                selected: root.barCountMode === "today"
+                onClicked: root.setBarCountMode("today")
+              }
+
+              NavButton {
+                id: barCountInboxButton
+                width: barCountRow.cellWidth
+                text: "Inbox"
+                selected: root.barCountMode === "inbox"
+                onClicked: root.setBarCountMode("inbox")
+              }
+
+              NavButton {
+                id: barCountAllButton
+                width: barCountRow.cellWidth
+                text: "All"
+                selected: root.barCountMode === "all"
+                onClicked: root.setBarCountMode("all")
               }
             }
 
@@ -1581,33 +1872,27 @@ Panel {
               }
             }
 
-            // Segmented-control look: zero spacing between the three
-            // Buttons, differentiated only by the selected-state fill —
-            // tab through them with Tab/Shift+Tab.
-            Row {
+            // Native segmented control (same shared component the built-in
+            // panels use, e.g. wifi's DNS-provider chips). Tab/Shift+Tab
+            // still cycles views through PanelKeyCatcher's own handling
+            // (onTabRequested -> cycleQuickView(), Panel.qml's
+            // PanelKeyCatcher block) rather than real Qt focus traversal —
+            // focusable: false keeps this control out of that focus chain
+            // entirely so it can't double-handle Tab or steal activeFocus
+            // from keyCatcher.
+            ButtonGroup {
               width: parent.width
               visible: root.apiToken !== ""
               height: visible ? implicitHeight : 0
               clip: true
-              spacing: 0
-
-              Button {
-                text: "Today"
-                selected: root.quickView === "today"
-                onClicked: root.selectQuickView("today")
-              }
-
-              Button {
-                text: "Inbox"
-                selected: root.quickView === "inbox"
-                onClicked: root.selectQuickView("inbox")
-              }
-
-              Button {
-                text: "All"
-                selected: root.quickView === "all"
-                onClicked: root.selectQuickView("all")
-              }
+              focusable: false
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              options: ["today", "inbox", "all"].map(function(v) {
+                return { value: v, label: v === "today" ? "Today" : v === "inbox" ? "Inbox" : "All" }
+              })
+              value: root.quickView
+              onChanged: function(v) { root.selectQuickView(v) }
             }
 
             PanelSeparator {
