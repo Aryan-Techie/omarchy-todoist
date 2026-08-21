@@ -2,6 +2,20 @@
 
 All notable user-facing changes to this plugin. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## v1.14 — Native panel styling
+
+### Added
+
+- **Settings → Bar Count**: show a task count next to the bar icon — choose Hide (default), Today, Inbox, or All. Independent of whichever tab the popup itself is on, so it stays put even while you browse other views.
+- The header subtitle now cycles through a small rotating list of phrases ("Counting boxes", "Chasing deadlines", …) with a soft fade, the same "trail of fading text" treatment the built-in Wi-Fi panel uses for its own connection status line.
+
+### Changed
+
+- The bar icon is now a hand-drawn Todoist checklist mark instead of a plain "✓" glyph — colored from the active theme (like the built-in Wi-Fi/Bluetooth/Display icons), not Todoist's fixed brand red.
+- The panel header's single status line is now a small stats grid (Tasks / Overdue / View / Synced), the same visual pattern the built-in Wi-Fi panel uses for its Ping/Packet Loss/IP/Gateway readout — including that panel's fuller spacing and right-aligned values, not just its label/value pairing. Overdue now turns the theme's urgent color when non-zero.
+- The header icon is bigger, matching the Wi-Fi panel's own header icon size.
+- The Today/Inbox/All tabs now use the shell's shared segmented-control component instead of a hand-rolled button row — same keyboard behavior as before (`Tab`/`Shift+Tab`/`t`/`i`/`a` still cycle views the same way), just native chrome.
+
 ## v1.13 — Token no longer exposed via the process list
 
 ### Security

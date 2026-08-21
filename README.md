@@ -52,8 +52,10 @@ constraints, and a few things that didn't work the first time.
 
 ## Features
 
-- Bar pill shows a checkmark plus your due/overdue task count (just a
-  checkmark when the list is clear).
+- Bar pill shows a theme-colored Todoist mark, matching the look of the
+  built-in Wi-Fi/Bluetooth panels. Hover it for your current task count, or
+  turn on **Settings → Bar Count** to show a live Today/Inbox/All count
+  right on the icon.
 - Panel lists matching tasks, sorted by due date then priority, color-coded
   by Todoist priority (**p1 red, p2 yellow, p3 blue, p4 normal**). The Today
   view splits into **Overdue** and **Today** sections so you can tell at a
@@ -101,14 +103,13 @@ omarchy bar put io.github.aryan-techie.todoist --section right
    personal API token.
 3. Paste it into the field and click **Save token**.
 
-That's it — the panel switches to your task list and the bar starts showing
-your count.
+That's it — the panel switches to your task list and the bar icon lights up.
 
 The panel drops right below its bar icon (not centered on the bar), at a
 fixed size you control — see **Settings → Advanced** below. Content that
-doesn't fit scrolls inside the panel instead of resizing it. The bar pill
-itself also holds a fixed width regardless of task count, so the panel's
-anchor point doesn't shift as the count's digit-length changes (e.g. 7 → 15).
+doesn't fit scrolls inside the panel instead of resizing it. The bar icon
+itself is a fixed-size slot regardless of task count, so the panel's anchor
+point never shifts as your count changes.
 
 ## Usage
 

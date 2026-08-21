@@ -78,6 +78,20 @@ function quickAddHasDueHint(text) {
   return DUE_HINT_RE.test(text)
 }
 
+// Relative time for the header's SYNCED stat. `epochMs` is 0 before the
+// first successful fetch ever lands.
+function formatRelativeTime(epochMs) {
+  if (!epochMs) return "never"
+  var deltaSec = Math.max(0, Math.round((Date.now() - epochMs) / 1000))
+  if (deltaSec < 45) return "just now"
+  var deltaMin = Math.round(deltaSec / 60)
+  if (deltaMin < 60) return deltaMin + "m ago"
+  var deltaHour = Math.round(deltaMin / 60)
+  if (deltaHour < 24) return deltaHour + "h ago"
+  var deltaDay = Math.round(deltaHour / 24)
+  return deltaDay + "d ago"
+}
+
 // curl exits non-zero with an empty stdout body on HTTP errors (-f), so the
 // only signal available for a friendly message is the exit code and
 // whatever curl printed to stderr.

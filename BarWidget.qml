@@ -3,7 +3,11 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Bar entry point: a small text pill ("✓" or "✓ 3") and the host for the
+// Bar entry point: the Todoist mark, plus an optional task count to its
+// right (Settings → Bar Count) — a plain WidgetButton with hand-built
+// content instead of BarIconButton, since BarIconButton centers its icon
+// slot and its inherited text label on the exact same point (no side-by-
+// side layout) and this plugin wants both visible together. Host for the
 // task-list popup. All Todoist state (token, tasks, fetching) lives in
 // Panel.qml; this file only reads it back to decide what the pill shows.
 BarWidget {
@@ -45,10 +49,24 @@ BarWidget {
     if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
   }
 
-  readonly property string displayLabel: {
-    if (!panelLoader.item || panelLoader.item.apiToken === "") return "✓"
-    var count = panelLoader.item.taskCount
-    return count > 0 ? ("✓ " + count) : "✓"
+  readonly property bool hasToken: panelLoader.item ? panelLoader.item.apiToken !== "" : false
+  readonly property int taskCount: panelLoader.item ? panelLoader.item.taskCount : 0
+
+  // ---- Bar count (Settings → Bar Count). "hide" is the default — icon
+  //      only, count shows in the tooltip. Any other mode also shows a
+  //      plain number to the icon's right (see contentRow below).
+  readonly property string barCountMode: panelLoader.item ? panelLoader.item.barCountMode : "hide"
+  readonly property int barCountValue: panelLoader.item ? panelLoader.item.barCountValue : 0
+  readonly property string barCountModeLabel: panelLoader.item ? panelLoader.item.barCountModeLabel : ""
+
+  readonly property string tooltipText: {
+    if (!root.hasToken) return "Todoist — not connected"
+    if (root.barCountMode === "hide") {
+      return root.taskCount > 0
+        ? ("Todoist — " + root.taskCount + (root.taskCount === 1 ? " task" : " tasks"))
+        : "Todoist — all clear"
+    }
+    return "Todoist — " + root.barCountValue + " " + root.barCountModeLabel
   }
 
   function injectPanelAndRefresh() {
@@ -84,27 +102,40 @@ BarWidget {
     function toggle(): void { root.togglePanel() }
   }
 
-  // Reserves room for the widest realistic label ("✓ 999") so the pill's
-  // own width — and with it the popup's centered-under-icon anchor point —
-  // never shifts as the task count's digit-length changes (e.g. "✓ 7" vs
-  // "✓ 15"). Horizontal bar mode only; vertical mode already uses a fixed
-  // icon-slot width regardless of label.
-  TextMetrics {
-    id: widthMetrics
-    font.family: button.fontFamily
-    font.pixelSize: button.fontSize
-    text: "✓ 999"
-  }
-
   WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.displayLabel
-    tooltipText: "Todoist"
-    horizontalMargin: 8.75
-    verticalPadding: 8.75
-    fixedWidth: root.vertical ? -1 : Math.ceil(widthMetrics.width + Style.spaceReal(horizontalMargin) * 2)
+    tooltipText: root.tooltipText
+    labelVisible: false
+    hasVisualContent: true
+    fixedWidth: root.vertical ? -1 : Math.ceil(contentRow.implicitWidth + Style.spaceReal(horizontalMargin) * 2)
+    fixedHeight: root.vertical ? Math.ceil(contentRow.implicitHeight + Style.spaceReal(verticalPadding) * 2) : -1
+
+    Row {
+      id: contentRow
+      anchors.centerIn: parent
+      spacing: Style.space(4)
+
+      TodoistIcon {
+        anchors.verticalCenter: parent.verticalCenter
+        // Matches DropboxIcon/TailscaleIcon's own sizing convention: a bit
+        // smaller than a full bar-icon slot so the mark has breathing room.
+        iconSize: Style.space(12)
+        color: root.bar ? root.bar.barForeground : Color.foreground
+        opacity: root.hasToken ? 1.0 : 0.6
+      }
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.hasToken && root.barCountMode !== "hide"
+        text: root.barCountMode !== "hide" ? String(root.barCountValue) : ""
+        color: root.bar ? root.bar.barForeground : Color.foreground
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.bar.iconFont
+        renderType: Text.NativeRendering
+      }
+    }
 
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.refresh()
