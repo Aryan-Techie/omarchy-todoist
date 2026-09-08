@@ -2,6 +2,16 @@
 
 All notable user-facing changes to this plugin. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## v1.16 — Rotating status phrases are now optional
+
+### Added
+
+- Settings → General now has a **Rotating status phrases** toggle (on by default). Turn it off and the header subtitle just stays blank instead of cycling through "Counting boxes", "Chasing deadlines", etc. Requested in #4.
+
+### Fixed
+
+- The "Show #project & @labels" toggle added in v1.15 wasn't reachable via Tab in Settings, only by mouse. Same fix applies to the new toggle above.
+
 ## v1.15 — Task metadata and layout stability
 
 ### Added
