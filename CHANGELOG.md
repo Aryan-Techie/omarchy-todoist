@@ -2,6 +2,17 @@
 
 All notable user-facing changes to this plugin. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## v1.15 — Task metadata and layout stability
+
+### Added
+
+- Each task now shows its **#Project** and any **@labels** under the due date, toggleable from **Settings → General**. Thanks [@DanielUlisses](https://github.com/DanielUlisses).
+
+### Fixed
+
+- The stats grid on the **All** tab shifted left compared to Today/Inbox, since its columns auto-sized to content and "ALL" is shorter than "TODAY"/"INBOX". Columns now use equal, explicit widths regardless of label.
+- With **Settings → Bar Count** showing a number, the bar pill (and the popup's anchor point) shifted every time the count's digit-length changed (e.g. "7" vs "15") — a regression from the v1.14 rewrite. The pill now reserves fixed room for a realistic max count again.
+
 ## v1.14 — Native panel styling
 
 ### Added
