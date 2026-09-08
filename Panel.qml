@@ -29,6 +29,7 @@ Panel {
   property string apiToken: ""
   property string filterQuery: "today | overdue"
   property bool showTaskMeta: true
+  property bool showHeaderQuips: true
   property var projectsById: ({})
   // "today" | "inbox" | "all" | "custom" — the three tabs plus whatever the
   // free-form filter field in Settings last applied.
@@ -198,7 +199,7 @@ Panel {
     if (root.apiToken === "") return "NOT CONNECTED"
     if (root.settingsView) return "SETTINGS"
     if (root.loading && root.tasks.length === 0) return "LOADING…"
-    return root.taskPhrase.toUpperCase()
+    return root.showHeaderQuips ? root.taskPhrase.toUpperCase() : ""
   }
 
   readonly property string syncedLabel: Model.formatRelativeTime(root.lastSyncedAt)
@@ -257,6 +258,7 @@ Panel {
     if (typeof parsed.barCountMode === "string" && ["hide", "today", "inbox", "all"].indexOf(parsed.barCountMode) !== -1)
       root.barCountMode = parsed.barCountMode
     if (typeof parsed.showTaskMeta === "boolean") root.showTaskMeta = parsed.showTaskMeta
+    if (typeof parsed.showHeaderQuips === "boolean") root.showHeaderQuips = parsed.showHeaderQuips
     root.settingsLoaded = true
     root.settingsView = root.apiToken === ""
     if (root.apiToken !== "") { refresh(); refreshBarCount() }
@@ -271,7 +273,8 @@ Panel {
       panelWidth: root.panelWidth,
       panelHeight: root.panelHeight,
       barCountMode: root.barCountMode,
-      showTaskMeta: root.showTaskMeta
+      showTaskMeta: root.showTaskMeta,
+      showHeaderQuips: root.showHeaderQuips
     }, null, 2) + "\n")
     // The token is a secret; keep the file readable only by the user. A
     // short defer gives the atomic write below somewhere to land first.
@@ -325,6 +328,11 @@ Panel {
     if (value && Object.keys(root.projectsById).length === 0) fetchProjects()
   }
 
+  function setShowHeaderQuips(value) {
+    root.showHeaderQuips = value
+    persistSettings()
+  }
+
   // ---- Settings keyboard navigation. An explicit ordered chain (not
   //      native Tab-focus-traversal — PanelKeyCatcher intercepts Tab itself
   //      via Keys.priority: BeforeItem, so relying on Qt's own chain would
@@ -346,7 +354,7 @@ Panel {
     // openTodoistButton is deliberately not part of the chain — it launches
     // an external browser, which can steal window focus from the panel
     // mid-navigation. Still reachable by mouse or the "t" shortcut.
-    chain.push(refreshNowButton, keyboardShortcutsButton)
+    chain.push(refreshNowButton, keyboardShortcutsButton, showTaskMetaButton, showHeaderQuipsButton)
     chain.push(widthMinusButton, widthPlusButton, heightMinusButton, heightPlusButton)
     // A disabled item silently rejects forceActiveFocus() in Qt Quick —
     // Tab has to skip past it rather than try to land there and fail.
@@ -1004,11 +1012,13 @@ Panel {
   //      subtitle Text (taskPhraseText, in the header UI below) so the
   //      swap itself is never an abrupt cut. Only runs while there's
   //      actually a phrase to show (headerStatsVisible) — same gating
-  //      Wi-Fi uses ("only while actively connected").
+  //      Wi-Fi uses ("only while actively connected") — and while Settings
+  //      → General's "Rotating status phrases" toggle is on (off leaves
+  //      the subtitle line blank instead of frozen on the last phrase).
   Timer {
     id: taskPhraseTimer
     interval: 2800
-    running: root.headerStatsVisible
+    running: root.headerStatsVisible && root.showHeaderQuips
     repeat: true
     onTriggered: taskPhraseSwap.restart()
   }
@@ -1036,6 +1046,14 @@ Panel {
       taskPhraseSwap.stop()
       taskPhraseText.opacity = 1.0
     }
+  }
+
+  // Same cleanup when the toggle itself turns the phrases off mid-fade —
+  // otherwise the subtitle could be left at opacity 0 forever, showing as a
+  // baffling blank line even after it's turned back on.
+  onShowHeaderQuipsChanged: {
+    taskPhraseSwap.stop()
+    taskPhraseText.opacity = 1.0
   }
 
   // ---- Settings' keyboard-navigable controls. Plain Button/PanelActionButton
@@ -1794,6 +1812,16 @@ Panel {
                   selected: root.showTaskMeta
                   text: "Show #project & @labels: " + (root.showTaskMeta ? "On" : "Off")
                   onClicked: root.setShowTaskMeta(!root.showTaskMeta)
+                }
+
+                NavButton {
+                  id: showHeaderQuipsButton
+                  width: parent.width
+                  leftAlign: true
+                  bordered: true
+                  selected: root.showHeaderQuips
+                  text: "Rotating status phrases: " + (root.showHeaderQuips ? "On" : "Off")
+                  onClicked: root.setShowHeaderQuips(!root.showHeaderQuips)
                 }
               }
             }
