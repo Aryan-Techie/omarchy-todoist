@@ -102,6 +102,23 @@ BarWidget {
     function toggle(): void { root.togglePanel() }
   }
 
+  // Reserves room for a realistic max task-count digit-length ("999") so
+  // the pill's own width -- and with it the popup's centered-under-icon
+  // anchor point -- doesn't shift every time Bar Count's number crosses a
+  // digit boundary (e.g. "7" vs "15"). Icon-only ("hide") mode never shows
+  // a count, so it's already a fixed size without needing this reserve.
+  TextMetrics {
+    id: countWidthMetrics
+    font.family: root.bar ? root.bar.fontFamily : Style.font.family
+    font.pixelSize: Style.bar.iconFont
+    text: "999"
+  }
+
+  readonly property bool countVisible: root.hasToken && root.barCountMode !== "hide"
+  readonly property real reservedContentWidth: countVisible
+    ? Style.space(12) + Style.space(4) + countWidthMetrics.width
+    : Style.space(12)
+
   WidgetButton {
     id: button
     anchors.fill: parent
@@ -109,7 +126,7 @@ BarWidget {
     tooltipText: root.tooltipText
     labelVisible: false
     hasVisualContent: true
-    fixedWidth: root.vertical ? -1 : Math.ceil(contentRow.implicitWidth + Style.spaceReal(horizontalMargin) * 2)
+    fixedWidth: root.vertical ? -1 : Math.ceil(root.reservedContentWidth + Style.spaceReal(horizontalMargin) * 2)
     fixedHeight: root.vertical ? Math.ceil(contentRow.implicitHeight + Style.spaceReal(verticalPadding) * 2) : -1
 
     Row {
