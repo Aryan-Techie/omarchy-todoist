@@ -62,6 +62,9 @@ constraints, and a few things that didn't work the first time.
   glance what's actually late.
 - Each task shows its **#Project** and any **@labels** under the due date
   (toggle off in **Settings → General** if you'd rather keep the list bare).
+- The header's rotating status phrases ("Counting boxes", "Chasing
+  deadlines", …) can be turned off from **Settings → General** if you find
+  them distracting — the subtitle line just stays blank instead.
 - Click the circle next to a task to mark it complete (updates instantly,
   syncs to Todoist in the background).
 - Quick-add box uses Todoist's own Quick Add parser — `p1`–`p4` priority,
@@ -123,8 +126,8 @@ point never shifts as your count changes.
   to create a task — see Quick Add syntax above (`p1`, `#Project`, dates).
 - The gear icon (or `p`) opens Settings, organized into **Account**,
   **Default filter**, **Keyboard shortcut**, **General** (Refresh now,
-  Keyboard shortcuts, Show #project & @labels), and **Advanced** (popup
-  size) sections.
+  Keyboard shortcuts, Show #project & @labels, Rotating status phrases),
+  and **Advanced** (popup size) sections.
 - Middle-click the bar icon to refresh without opening the panel, or press
   `r` while the panel's open.
 
