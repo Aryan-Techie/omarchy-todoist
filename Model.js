@@ -91,6 +91,35 @@ function quickAddHasDueHint(text) {
   return DUE_HINT_RE.test(text)
 }
 
+// /tasks/quick only applies a label when "@word" is its whole name, and stops
+// reading at the first space, so labels like "PM 🇿🇦" can't be typed at all.
+// Matches each "@word" the way the app's autocomplete does: case-insensitive,
+// an exact name first, then the first label whose name starts with the word.
+// Matched words are taken out of the text so the caller can set the labels
+// on the created task; unmatched ones stay for Todoist to handle as before.
+function resolveQuickAddLabels(text, labelNames) {
+  var names = labelNames || []
+  var kept = []
+  var labels = []
+  var words = String(text || "").split(" ")
+  for (var i = 0; i < words.length; i++) {
+    var word = words[i]
+    var query = word.charAt(0) === "@" ? word.substring(1).toLowerCase() : ""
+    var match = ""
+    for (var j = 0; query !== "" && match === "" && j < names.length; j++)
+      if (names[j].toLowerCase() === query) match = names[j]
+    for (var k = 0; query !== "" && match === "" && k < names.length; k++)
+      if (names[k].toLowerCase().indexOf(query) === 0) match = names[k]
+    if (match === "") { kept.push(word); continue }
+    if (labels.indexOf(match) === -1) labels.push(match)
+    // The full name typed out ("@PM 🇿🇦") spans several words; drop them all.
+    var extra = match.split(" ").length - 1
+    if (extra > 0 && words.slice(i, i + extra + 1).join(" ").substring(1).toLowerCase() === match.toLowerCase())
+      i += extra
+  }
+  return { text: kept.join(" ").replace(/\s+/g, " ").trim(), labels: labels }
+}
+
 // Relative time for the header's SYNCED stat. `epochMs` is 0 before the
 // first successful fetch ever lands.
 function formatRelativeTime(epochMs) {
