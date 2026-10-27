@@ -87,6 +87,12 @@ Panel {
   property bool suppressNextActivate: false
 
   property bool helpOpen: false
+  // The help overlay has four separate close paths (Escape, background
+  // click, "?" toggle, header button) — one handler here instead of
+  // repeating the handoff at each site. Without it, closing the overlay
+  // leaves its own key-catching Item with active focus and keyCatcher
+  // never gets it back, so j/k/e/x etc. go dead until the panel reopens.
+  onHelpOpenChanged: if (!root.helpOpen) Qt.callLater(function() { keyCatcher.forceActiveFocus() })
 
   // Fixed popup size, user-adjustable from Settings → Advanced. Deliberately
   // NOT derived from content (mainColumn.implicitHeight) — letting the
@@ -532,10 +538,12 @@ Panel {
     confirmDialog.opened = false
     root.pendingDeleteTaskId = ""
     root.pendingDeleteTaskContent = ""
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
   function confirmDeleteTask() {
     confirmDialog.opened = false
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
     var taskId = root.pendingDeleteTaskId
     root.pendingDeleteTaskId = ""
     root.pendingDeleteTaskContent = ""
