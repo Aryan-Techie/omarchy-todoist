@@ -70,7 +70,9 @@ constraints, and a few things that didn't work the first time.
 - Quick-add box uses Todoist's own Quick Add parser — `p1`–`p4` priority,
   `#Project`, `@label`, and natural-language due dates (`tomorrow at 5pm`,
   `next Monday`) all work exactly like typing into Todoist itself. A bare
-  task with no date in it (`Buy milk`) defaults to due **today**.
+  task with no date in it (`Buy milk`) defaults to due **today**. Labels
+  match like the app's autocomplete: `@pm` finds a label named `PM 🇿🇦`,
+  so labels with spaces or emoji work too.
 - **Today / Inbox / All** quick-view tabs above the list, plus a custom
   [Todoist filter](https://www.todoist.com/help/articles/introduction-to-filters-V98wIH)
   field in Settings for anything more specific (defaults to `today | overdue`).
@@ -232,8 +234,9 @@ want your token gone too.
 
 Uses the [Todoist API v1](https://developer.todoist.com/api/v1/):
 `GET /tasks/filter` (or plain `GET /tasks` for the All view), `POST
-/tasks/quick` (Quick Add, natural-language parsing) for new tasks, `POST
-/tasks/{id}` to edit a task's title, `POST /tasks/{id}/close` to complete,
+/tasks/quick` (Quick Add, natural-language parsing) for new tasks, `GET
+/labels` to match a new task's `@labels`, `POST /tasks/{id}` to edit a
+task's title or set those labels, `POST /tasks/{id}/close` to complete,
 `DELETE /tasks/{id}` to delete. `Enter` opens
 `https://app.todoist.com/app/task/{id}` in your default browser. The older
 REST API v2 was retired by Todoist in February 2026, so this plugin only

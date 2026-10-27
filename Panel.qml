@@ -619,13 +619,26 @@ Panel {
   //      "p1"/"p2"/"p3"/"p4", "#Project", "@label", and natural-language
   //      due dates work exactly like typing into Todoist itself. A bare
   //      task with no date hint gets " today" appended so it defaults to
-  //      due today instead of no due date.
+  //      due today instead of no due date. Any "@word" first sends for the
+  //      label list (fresh each time, so a just-created label is found) and
+  //      is matched to a label here — see Model.resolveQuickAddLabels.
   function submitQuickAdd() {
     var content = Model.safeTrim(root.quickAddText)
     if (content === "" || root.quickAddSubmitting || root.apiToken === "") return
-    var text = Model.quickAddHasDueHint(content) ? content : (content + " today")
     root.quickAddSubmitting = true
     root.errorText = ""
+    if (/(^|\s)@\S/.test(content)) {
+      labelsProc.pendingContent = content
+      runAuthedCurl(labelsProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", root.apiBase + "/labels?limit=200"])
+    } else {
+      sendQuickAdd(content, [])
+    }
+  }
+
+  function sendQuickAdd(content, labelNames) {
+    var resolved = Model.resolveQuickAddLabels(content, labelNames)
+    var text = Model.quickAddHasDueHint(resolved.text) ? resolved.text : (resolved.text + " today")
+    createProc.pendingLabels = resolved.labels
     runAuthedCurl(createProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "POST",
       "-H", "Content-Type: application/json",
       "-d", JSON.stringify({ text: text }),
@@ -865,21 +878,96 @@ Panel {
     }
   }
 
+  // Label names for quick add's "@word" matching. Best-effort: if the fetch
+  // fails, the text is sent as typed, the same as before label matching.
+  Process {
+    id: labelsProc
+    property string pendingContent: ""
+    property var names: []
+    stdout: StdioCollector {
+      id: labelsOut
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(String(text || "").trim())
+          var results = (parsed && parsed.results) ? parsed.results : []
+          labelsProc.names = results.map(function(label) { return label.name })
+        } catch (e) {
+          labelsProc.names = []
+        }
+      }
+    }
+    stderr: StdioCollector {
+      id: labelsErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      // Wait a tick so labelsOut has the response if it lagged the exit.
+      Qt.callLater(function() {
+        var names = exitCode === 0 ? labelsProc.names : []
+        labelsProc.names = []
+        root.sendQuickAdd(labelsProc.pendingContent, names)
+      })
+    }
+  }
+
   Process {
     id: createProc
+    // Labels matched from "@word"s, set on the new task once it exists.
+    property var pendingLabels: []
+    stdout: StdioCollector {
+      id: createOut
+      waitForEnd: true
+    }
     stderr: StdioCollector {
       id: createErr
       waitForEnd: true
     }
     onExited: function(exitCode) {
-      root.quickAddSubmitting = false
-      if (exitCode === 0) {
-        root.quickAddText = ""
-        quickAddField.text = ""
-        root.refresh()
-      } else {
+      if (exitCode !== 0) {
+        root.quickAddSubmitting = false
         root.errorText = Model.errorMessageForExit(exitCode, createErr.text)
+        return
       }
+      root.quickAddText = ""
+      quickAddField.text = ""
+      if (createProc.pendingLabels.length === 0) {
+        root.quickAddSubmitting = false
+        root.refresh()
+        return
+      }
+      // Wait a tick so createOut has the response if it lagged the exit.
+      Qt.callLater(function() {
+        var task = null
+        try { task = JSON.parse(String(createOut.text || "").trim()) } catch (e) {}
+        if (!task || !task.id) {
+          root.quickAddSubmitting = false
+          root.errorText = "Added the task, but couldn't set its labels."
+          root.refresh()
+          return
+        }
+        var labels = (task.labels || []).slice()
+        for (var i = 0; i < createProc.pendingLabels.length; i++)
+          if (labels.indexOf(createProc.pendingLabels[i]) === -1) labels.push(createProc.pendingLabels[i])
+        runAuthedCurl(labelTaskProc, ["curl", "-fsS", "--max-time", "10", "-K", "-", "-X", "POST",
+          "-H", "Content-Type: application/json",
+          "-d", JSON.stringify({ labels: labels }),
+          root.apiBase + "/tasks/" + encodeURIComponent(task.id)])
+      })
+    }
+  }
+
+  Process {
+    id: labelTaskProc
+    stderr: StdioCollector {
+      id: labelTaskErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      root.quickAddSubmitting = false
+      if (exitCode !== 0) root.errorText = "Added the task, but couldn't set its labels: "
+        + Model.errorMessageForExit(exitCode, labelTaskErr.text)
+      root.refresh()
     }
   }
 
