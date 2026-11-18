@@ -1272,6 +1272,7 @@ Panel {
         height: visible ? implicitHeight : 0
         width: parent.width
         text: row.task ? row.task.content : ""
+        textFormat: Text.PlainText
         opacity: row.completing ? 0.5 : 1.0
         font.strikeout: row.completing
         color: row.textColor
@@ -1295,6 +1296,7 @@ Panel {
         height: visible ? implicitHeight : 0
         width: parent.width
         text: row.dueLabel
+        textFormat: Text.PlainText
         color: row.overdue ? Color.urgent : Qt.darker(root.contentForeground, 1.5)
         wrapMode: Text.WordWrap
         font.family: root.contentFontFamily
@@ -1306,6 +1308,7 @@ Panel {
         height: visible ? implicitHeight : 0
         width: parent.width
         text: row.metaLabel
+        textFormat: Text.PlainText
         color: Qt.darker(root.contentForeground, 1.7)
         wrapMode: Text.WordWrap
         font.family: root.contentFontFamily
@@ -2192,6 +2195,7 @@ Panel {
               height: visible ? implicitHeight : 0
               width: parent.width
               text: root.errorText
+              textFormat: Text.PlainText
               color: Color.urgent
               wrapMode: Text.WordWrap
               font.family: root.contentFontFamily
